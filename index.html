@@ -6,7 +6,6 @@
 <title>Talent Mapping · BSG</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 
@@ -1713,7 +1712,7 @@ function openCalib(personId) {
   openModal('modal-calib');
 }
 
-async function saveCalibration() {
+function saveCalibration() {
   if (!canCalibrate()) { alert('No tenés permisos para calibrar.'); return; }
   const personId = parseInt(document.getElementById('modal-calib').dataset.personId);
   const p = EXCEL_DATA.find(d => d.id === personId);
@@ -1741,13 +1740,8 @@ async function saveCalibration() {
     ultima_edicion: entrada.fecha,
     ultimo_usuario: CURRENT_USER.fullname
   };
-  
-  // Guardar en Supabase
-  const saved = await saveCalibrationToSupabase();
-  if (saved) {
-    closeModal('modal-calib');
-    renderCalibration();
-  }
+  closeModal('modal-calib');
+  renderCalibration();
 }
 
 /* ============================================================
@@ -2433,42 +2427,6 @@ function drawDoughnutWithCenter(canvasId, labels, data, colors, centerText) {
     options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { labels: { color: '#6b7390', font: { size: 11 } } } } },
     plugins: [centerPlugin]
   });
-}
-
-/* ============================================================
-   SUPABASE INIT
-   ============================================================ */
-const SUPABASE_URL = 'https://xmqrewclhdodvjzadxqj.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_SBQE00qYq4nx-8AHsKOVHQ_yH69zbGQ';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-async function saveCalibrationToSupabase() {
-  if (!modalPersonId) return;
-  
-  const data = {
-    user_id: CURRENT_USER?.user || 'anonymous',
-    person_id: modalPersonId,
-    classification: document.getElementById('modal-clasif')?.value || '',
-    estado: document.getElementById('modal-estado')?.value || '',
-    notes: document.getElementById('modal-notes')?.value || ''
-  };
-  
-  try {
-    const { error } = await supabase
-      .from('calibration_data')
-      .insert([data]);
-    
-    if (error) {
-      console.error('Error guardando:', error);
-      alert('Error al guardar en Supabase: ' + error.message);
-      return false;
-    }
-    console.log('Datos guardados en Supabase ✓');
-    return true;
-  } catch (e) {
-    console.error('Exception:', e);
-    return false;
-  }
 }
 
 /* ============================================================
