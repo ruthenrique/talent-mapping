@@ -6,6 +6,7 @@
 <title>Talent Mapping · BSG</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 
@@ -1112,7 +1113,7 @@ function canUploadFile() {
 /* ============================================================
    AUTH
    ============================================================ */
-function performLogin(event) {
+async function performLogin(event) {
   event.preventDefault();
   const user = document.getElementById('login-user').value.trim();
   const password = document.getElementById('login-password').value;
@@ -1124,6 +1125,7 @@ function performLogin(event) {
     CURRENT_USER = found;
     CURRENT_SESSION = { user: found.user, role: found.role, pais: found.pais, hrbp: found.hrbp, fullname: found.fullname };
     try { sessionStorage.setItem('tm_session', JSON.stringify(CURRENT_SESSION)); } catch(e) {}
+    await loadCalibrationsFromSupabase();
     bootApp();
   } catch (err) {
     errEl.textContent = 'Error al iniciar sesión: ' + err.message;
@@ -1712,7 +1714,7 @@ function openCalib(personId) {
   openModal('modal-calib');
 }
 
-function saveCalibration() {
+async function saveCalibration() {
   if (!canCalibrate()) { alert('No tenés permisos para calibrar.'); return; }
   const personId = parseInt(document.getElementById('modal-calib').dataset.personId);
   const p = EXCEL_DATA.find(d => d.id === personId);
@@ -1740,6 +1742,23 @@ function saveCalibration() {
     ultima_edicion: entrada.fecha,
     ultimo_usuario: CURRENT_USER.fullname
   };
+  
+  // Guardar en Supabase
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('calibration_data').insert([{
+        user_id: CURRENT_USER.user,
+        person_id: String(personId),
+        classification: modalCurrentClasif,
+        estado: modalCurrentEstado,
+        notes: comentario
+      }]);
+      console.log('✓ Guardado en Supabase');
+    } catch (e) {
+      console.error('Error Supabase:', e);
+    }
+  }
+  
   closeModal('modal-calib');
   renderCalibration();
 }
@@ -2430,16 +2449,63 @@ function drawDoughnutWithCenter(canvasId, labels, data, colors, centerText) {
 }
 
 /* ============================================================
+   SUPABASE
+   ============================================================ */
+const SUPABASE_URL = 'https://xmqrewclhdodvjzadxqj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_SBQE00qYq4nx-8AHsKOVHQ_yH69zbGQ';
+
+if (window.supabase && window.supabase.createClient) {
+  window.sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log('✓ Supabase conectado');
+}
+
+async function loadCalibrationsFromSupabase() {
+  if (!window.sbClient) return;
+  try {
+    const { data, error } = await window.sbClient
+      .from('calibration_data')
+      .select('*')
+      .order('created_at', { ascending: true });
+    
+    if (error) { console.error(error); return; }
+    
+    // Agrupar por person_id (último estado gana)
+    data.forEach(row => {
+      const pid = parseInt(row.person_id);
+      if (!CALIBRACION_DATA[pid]) CALIBRACION_DATA[pid] = { historial: [] };
+      CALIBRACION_DATA[pid].estado = row.estado;
+      CALIBRACION_DATA[pid].clasificacion = row.classification;
+      CALIBRACION_DATA[pid].comentario = row.notes;
+      CALIBRACION_DATA[pid].ultima_edicion = new Date(row.created_at).toLocaleString('es-AR');
+      CALIBRACION_DATA[pid].ultimo_usuario = row.user_id;
+      CALIBRACION_DATA[pid].historial.push({
+        fecha: new Date(row.created_at).toLocaleString('es-AR'),
+        usuario: row.user_id,
+        clasif_nueva: row.classification,
+        estado: row.estado,
+        comentario: row.notes
+      });
+    });
+    console.log(`✓ Cargadas ${data.length} calibraciones de Supabase`);
+  } catch (e) {
+    console.error('Error cargando:', e);
+  }
+}
+
+/* ============================================================
    INIT
    ============================================================ */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   let saved = null;
   try { saved = sessionStorage.getItem('tm_session'); } catch(e) {}
   if (saved) {
     try {
       CURRENT_SESSION = JSON.parse(saved);
       CURRENT_USER = USERS.find(u => u.user === CURRENT_SESSION.user);
-      if (CURRENT_USER) bootApp();
+      if (CURRENT_USER) {
+        await loadCalibrationsFromSupabase();
+        bootApp();
+      }
     } catch (e) { try { sessionStorage.removeItem('tm_session'); } catch(err) {} }
   }
   document.querySelectorAll('.modal-overlay').forEach(el => {
