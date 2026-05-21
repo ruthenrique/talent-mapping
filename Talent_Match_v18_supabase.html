@@ -1,0 +1,2493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Talent Mapping · BSG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
+
+  :root {
+    /* Paleta clean: fondo claro, acentos suaves */
+    --bg: #f6f8fb;
+    --surface: #ffffff;
+    --surface2: #f9fafc;
+    --surface3: #eef1f6;
+    --border: #e6e9f0;
+    --border2: #d4d9e3;
+    --text: #1a2238;
+    --text-dim: #6b7390;
+    --text-muted: #9aa1b8;
+    --accent: #4c6ef5;
+    --accent-soft: #eef2ff;
+    --accent-strong: #364fc7;
+    --promotor: #16a36a;
+    --promotor-bg: #e6f7ef;
+    --promotor-border: #b9e7d0;
+    --neutro: #d97706;
+    --neutro-bg: #fef3e2;
+    --neutro-border: #fbd7a8;
+    --detractor: #dc2828;
+    --detractor-bg: #fde8e8;
+    --detractor-border: #f5b8b8;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(20, 30, 60, 0.04);
+    --shadow: 0 2px 8px rgba(20, 30, 60, 0.06);
+    --font-head: 'Plus Jakarta Sans', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px; height: 64px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: linear-gradient(135deg, #4c6ef5, #7b5eff);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 700; font-size: 14px; color: #fff;
+  }
+  .topbar-title { font-family: var(--font-head); font-weight: 700; font-size: 17px; letter-spacing: -0.3px; color: var(--text); }
+  .topbar-claim { font-size: 11px; color: var(--text-dim); margin-top: 2px; font-style: italic; }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+  .user-badge { padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; color: var(--text); }
+  .user-name { font-weight: 600; color: var(--accent-strong); }
+
+  .tabs {
+    display: flex; gap: 2px;
+    padding: 0 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 14px 18px; cursor: pointer; white-space: nowrap;
+    font-family: var(--font-body); font-weight: 500; font-size: 13px;
+    color: var(--text-dim); border-bottom: 2px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-color: var(--accent); font-weight: 600; }
+
+  .main { flex: 1; padding: 24px 28px; overflow-y: auto; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .section-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
+  .section-title { font-family: var(--font-head); font-weight: 700; font-size: 22px; letter-spacing: -0.5px; }
+  .section-sub { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-title {
+    font-family: var(--font-head); font-weight: 600; font-size: 13px;
+    letter-spacing: 0.3px; text-transform: uppercase; color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .card-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .card-title-row .card-title { margin-bottom: 0; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-sm);
+  }
+  .kpi-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); margin-bottom: 8px; }
+  .kpi-value { font-family: var(--font-head); font-size: 28px; font-weight: 700; letter-spacing: -1px; line-height: 1; color: var(--text); }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+  .kpi.green .kpi-value { color: var(--promotor); }
+  .kpi.orange .kpi-value { color: var(--neutro); }
+  .kpi.red .kpi-value { color: var(--detractor); }
+  .kpi.blue .kpi-value { color: var(--accent); }
+  .kpi.purple .kpi-value { color: #7b5eff; }
+
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm); }
+  .chart-card.wide { grid-column: span 2; }
+  .chart-card canvas { max-height: 230px; }
+
+  /* ============================================================
+     FILTROS COMO TAGS SELECCIONABLES
+     ============================================================ */
+  .filters-tags-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .filters-tags-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .filters-tags-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+  .filter-clear-btn { background: transparent; color: var(--text-dim); border: 1px solid var(--border); font-size: 10px; padding: 3px 8px; border-radius: 6px; }
+  .filter-clear-btn:hover { background: var(--surface2); }
+  /* Layout compacto: todo en una sola fila horizontal con wrap */
+  .filters-compact-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+  }
+  .filter-group-inline {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .filter-section { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 0; }
+  .filter-section:not(:last-child)::after {
+    content: '·';
+    color: var(--border2);
+    font-size: 14px;
+    margin-left: 2px;
+  }
+  .filter-section-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-muted); white-space: nowrap;
+  }
+  .filter-tags-row { display: flex; flex-wrap: wrap; gap: 4px; }
+  .filter-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px; color: var(--text); font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .filter-tag:hover { background: var(--surface3); border-color: var(--border2); }
+  .filter-tag.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    font-weight: 600;
+  }
+  .filter-tag.active::before {
+    content: '✓';
+    font-size: 10px;
+    color: var(--accent);
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table th {
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    padding: 11px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    font-size: 10px;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  table th:hover { color: var(--accent); }
+  table th .sort-icon { margin-left: 4px; color: var(--text-muted); }
+  table th.sort-asc .sort-icon::after { content: ' ▲'; color: var(--accent); }
+  table th.sort-desc .sort-icon::after { content: ' ▼'; color: var(--accent); }
+  table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  table tbody tr:hover { background: var(--surface2); }
+  table tbody tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block;
+    padding: 4px 9px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border: 1px solid transparent;
+  }
+  .badge-promotor { background: var(--promotor-bg); color: var(--promotor); border-color: var(--promotor-border); }
+  .badge-neutro { background: var(--neutro-bg); color: var(--neutro); border-color: var(--neutro-border); }
+  .badge-detractor { background: var(--detractor-bg); color: var(--detractor); border-color: var(--detractor-border); }
+
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.05s;
+    font-family: var(--font-body);
+  }
+  button:hover { opacity: 0.92; }
+  button:active { transform: scale(0.98); }
+  button.btn-logout { background: var(--detractor); }
+  button.btn-sm { padding: 5px 10px; font-size: 11px; }
+  button.btn-secondary { background: var(--surface3); color: var(--text); border: 1px solid var(--border); }
+  button.btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+  button.btn-ghost:hover { background: var(--surface2); }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(20, 30, 60, 0.4);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    max-width: 600px;
+    width: 92%;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 24px;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(20, 30, 60, 0.15);
+  }
+  .modal-header { font-family: var(--font-head); font-weight: 700; font-size: 17px; margin-bottom: 16px; }
+  .modal-close {
+    position: absolute;
+    top: 14px; right: 14px;
+    background: transparent;
+    color: var(--text-dim);
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 0;
+    width: 28px; height: 28px;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  input[type="text"], input[type="number"], input[type="date"], textarea, select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: var(--font-body);
+    width: 100%;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.12);
+  }
+  textarea { min-height: 80px; resize: vertical; }
+  label.field-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .field-group { margin-bottom: 14px; }
+
+  .no-data { text-align: center; color: var(--text-dim); padding: 40px 20px; }
+  .hide { display: none; }
+  .login-screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 300; display: flex; align-items: center; justify-content: center; }
+  .login-screen.hidden { display: none; }
+  .login-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px; width: 100%; max-width: 400px; box-shadow: 0 10px 40px rgba(20,30,60,0.08); }
+  .login-form h1 { font-family: var(--font-head); font-weight: 700; font-size: 24px; margin-bottom: 6px; }
+  .login-form .login-claim { color: var(--text-dim); margin-bottom: 24px; font-size: 13px; font-style: italic; }
+  .login-form-group { margin-bottom: 14px; }
+  .login-form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-dim); }
+  .login-form button { width: 100%; margin-top: 8px; padding: 10px; font-size: 13px; }
+  .login-error { color: var(--detractor); font-size: 12px; margin-top: 12px; text-align: center; }
+
+  /* CALIBRACIÓN - estilo similar al ejemplo de Staff */
+  .calib-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+  .calib-card-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+  }
+  .segmented-control {
+    display: inline-flex; gap: 6px; flex-wrap: wrap;
+  }
+  .segmented-option {
+    padding: 10px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    transition: all 0.15s;
+    user-select: none;
+    min-width: 100px;
+    text-align: center;
+  }
+  .segmented-option:hover { background: var(--surface3); }
+  .segmented-option.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent-strong);
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(76,110,245,0.15);
+  }
+  .segmented-option.opt-promotor.active { background: var(--promotor-bg); border-color: var(--promotor); color: var(--promotor); }
+  .segmented-option.opt-neutro.active   { background: var(--neutro-bg);   border-color: var(--neutro);   color: var(--neutro); }
+  .segmented-option.opt-detractor.active{ background: var(--detractor-bg);border-color: var(--detractor);color: var(--detractor); }
+
+  .change-indicator {
+    background: var(--neutro-bg);
+    border: 1px solid var(--neutro-border);
+    color: var(--neutro);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .change-indicator.confirmed {
+    background: var(--promotor-bg);
+    border-color: var(--promotor-border);
+    color: var(--promotor);
+  }
+  .change-arrow { font-weight: 700; }
+  .change-old { text-decoration: line-through; opacity: 0.7; }
+  .change-new { font-weight: 700; }
+
+  /* PLAN DE ACCIÓN */
+  .task-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .task-item-content { flex: 1; }
+  .task-item-title { font-weight: 600; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+  .task-item-meta { font-size: 11px; color: var(--text-dim); display: flex; gap: 12px; flex-wrap: wrap; }
+  .task-status-badge { font-size: 10px; padding: 3px 8px; border-radius: 999px; font-weight: 600; }
+  .task-status-pendiente { background: var(--neutro-bg); color: var(--neutro); }
+  .task-status-progreso { background: var(--accent-soft); color: var(--accent-strong); }
+  .task-status-completado { background: var(--promotor-bg); color: var(--promotor); }
+  .task-delete { background: transparent; color: var(--detractor); border: none; cursor: pointer; padding: 4px 8px; font-size: 11px; }
+
+  /* UPLOAD */
+  .upload-box {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    text-align: center;
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .upload-box:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .upload-box input[type="file"] { display: none; }
+  .upload-icon { font-size: 32px; color: var(--accent); margin-bottom: 8px; }
+  .upload-text { font-size: 13px; color: var(--text-dim); }
+  .upload-text strong { color: var(--accent); }
+
+  @media (max-width: 1024px) {
+    .charts-grid { grid-template-columns: 1fr 1fr; }
+    .chart-card.wide { grid-column: span 1; }
+  }
+  @media (max-width: 768px) {
+    .charts-grid { grid-template-columns: 1fr; }
+    .topbar { padding: 0 14px; }
+    .main { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-form">
+    <h1>🎯 Talent Mapping</h1>
+    <p class="login-claim">Personas que viven la marca antes de venderla.</p>
+
+    <form onsubmit="performLogin(event)">
+      <div class="login-form-group">
+        <label for="login-user">Usuario</label>
+        <input type="text" id="login-user" placeholder="Ingresá tu usuario" autocomplete="off" required>
+      </div>
+      <div class="login-form-group">
+        <label for="login-password">Contraseña</label>
+        <input type="password" id="login-password" placeholder="••••••••" autocomplete="off" required>
+      </div>
+      <button type="submit">Ingresar</button>
+      <div id="login-error" class="login-error"></div>
+    </form>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app hide">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">TM</div>
+      <div>
+        <div class="topbar-title">Talent Mapping</div>
+        <div class="topbar-claim">Personas que viven la marca antes de venderla.</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="user-badge">
+        <span class="user-name" id="topbar-user-fullname">—</span>
+        <span style="color: var(--text-muted); font-size: 10px; margin-left: 6px;" id="topbar-user-role">—</span>
+      </div>
+      <button class="btn-logout" onclick="performLogout()">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- ORDEN: Dashboard, Nuevos Ingresos, Calibración, Talent Review, Plan de Acción, Data Maestro, Talent Mapping (admin), Configuración -->
+  <div class="tabs">
+    <div class="tab active" data-tab="dashboard" onclick="switchTab('dashboard', this)">Dashboard</div>
+    <div class="tab" data-tab="nuevos" onclick="switchTab('nuevos', this)">Nuevos Ingresos</div>
+    <div class="tab" data-tab="talent-review" onclick="switchTab('talent-review', this)">Talent Review</div>
+    <div class="tab" data-tab="calibracion" onclick="switchTab('calibracion', this)">Calibración</div>
+    <div class="tab" data-tab="plan-accion" onclick="switchTab('plan-accion', this)">Plan de Acción</div>
+    <div class="tab" data-tab="talent-mapping" onclick="switchTab('talent-mapping', this)">Talent Mapping</div>
+    <div class="tab" data-tab="data-maestro" onclick="switchTab('data-maestro', this)">Data Maestro</div>
+    <div class="tab" data-tab="configuracion" onclick="switchTab('configuracion', this)">Configuración</div>
+  </div>
+
+  <div class="main">
+
+    <!-- ============ DASHBOARD ============ -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Dashboard</div>
+          <div class="section-sub">Vista ejecutiva Talent Mapping</div>
+        </div>
+      </div>
+
+      <div class="filters-tags-card" id="dash-filters-container">
+        <div class="filters-tags-header">
+          <div class="filters-tags-title">Filtros activos</div>
+          <button class="filter-clear-btn" onclick="clearFilters('dash')">Limpiar filtros</button>
+        </div>
+        <div id="dash-filters-body"></div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi blue"><div class="kpi-label">Total Evaluados</div><div class="kpi-value" id="kpi-total">0</div></div>
+        <div class="kpi green"><div class="kpi-label">Promotores</div><div class="kpi-value" id="kpi-promotores">0</div></div>
+        <div class="kpi orange"><div class="kpi-label">Neutros</div><div class="kpi-value" id="kpi-neutros">0</div></div>
+        <div class="kpi red"><div class="kpi-label">Detractores</div><div class="kpi-value" id="kpi-detractores">0</div></div>
+        <div class="kpi blue"><div class="kpi-label">Score Promedio</div><div class="kpi-value" id="kpi-score-prom">0.0</div></div>
+        <div class="kpi blue"><div class="kpi-label">Salud Cultural (NPS)</div><div class="kpi-value" id="kpi-salud">0</div><div class="kpi-sub">%Promotores − %Detractores</div></div>
+        <div class="kpi green"><div class="kpi-label">% Recontratación</div><div class="kpi-value" id="kpi-recontratacion">0%</div></div>
+        <div class="kpi purple"><div class="kpi-label">Con Potencial</div><div class="kpi-value" id="kpi-potencial">0</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card"><div class="card-title">Distribución Talent Mapping</div><canvas id="chart-adn"></canvas></div>
+        <div class="chart-card"><div class="card-title">Recontratación</div><canvas id="chart-recontratacion"></canvas></div>
+        <div class="chart-card"><div class="card-title">Por Marca</div><canvas id="chart-marca"></canvas></div>
+      </div>
+
+      <div class="charts-grid">
+      </div>
+
+      <div class="card">
+        <div class="card-title">Distribución Talent Mapping por Distrito</div>
+        <canvas id="chart-distrito" style="max-height: 280px;"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Tiendas con más Detractores · Detalle</div>
+        <div class="table-wrapper">
+          <table id="table-top-detractores">
+            <thead><tr><th>Tienda</th><th>Distrito</th><th>Detractores</th><th>Neutros</th><th>Promotores</th><th>Total</th><th>% Detractores</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ NUEVOS INGRESOS ============ -->
+    <div id="tab-nuevos" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Nuevos Ingresos</div>
+          <div class="section-sub">Personas con menos de 1 año de antigüedad</div>
+        </div>
+      </div>
+
+      <div class="filters-tags-card" id="ni-filters-container">
+        <div class="filters-tags-header">
+          <div class="filters-tags-title">Filtros activos</div>
+          <button class="filter-clear-btn" onclick="clearFilters('ni')">Limpiar filtros</button>
+        </div>
+        <div id="ni-filters-body"></div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi blue"><div class="kpi-label">Total Nuevos</div><div class="kpi-value" id="ni-total">0</div></div>
+        <div class="kpi green"><div class="kpi-label">Promotores</div><div class="kpi-value" id="ni-promotores">0</div></div>
+        <div class="kpi orange"><div class="kpi-label">Neutros</div><div class="kpi-value" id="ni-neutros">0</div></div>
+        <div class="kpi red"><div class="kpi-label">Detractores</div><div class="kpi-value" id="ni-detractores">0</div></div>
+        <div class="kpi blue"><div class="kpi-label">Score Promedio</div><div class="kpi-value" id="ni-score-prom">0.0</div></div>
+        <div class="kpi purple"><div class="kpi-label">% con Potencial</div><div class="kpi-value" id="ni-pct-potencial">0%</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card"><div class="card-title">Distribución Talent Mapping</div><canvas id="chart-ni-adn"></canvas></div>
+        <div class="chart-card"><div class="card-title">Por Rol</div><canvas id="chart-ni-rol"></canvas></div>
+        <div class="chart-card"><div class="card-title">Por Tienda</div><canvas id="chart-ni-tienda"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Detalle Nuevos Ingresos</div>
+        <div class="table-wrapper">
+          <table id="table-nuevos">
+            <thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Distrito</th><th>Score</th><th>Clasif. TM</th><th>Potencial</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TALENT MAPPING ============ -->
+    <div id="tab-talent-mapping" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Talent Mapping</div>
+          <div class="section-sub">Mapa de talento por dimensión y desempeño</div>
+        </div>
+      </div>
+
+      <div class="filters-tags-card" id="tmap-filters-container">
+        <div class="filters-tags-header">
+          <div class="filters-tags-title">Filtros activos</div>
+          <button class="filter-clear-btn" onclick="clearFilters('tmap')">Limpiar filtros</button>
+        </div>
+        <div id="tmap-filters-body"></div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi blue"><div class="kpi-label">Total Mapeados</div><div class="kpi-value" id="tmap-total">0</div></div>
+        <div class="kpi green"><div class="kpi-label">Score Promedio</div><div class="kpi-value" id="tmap-score">0.0</div></div>
+        <div class="kpi purple"><div class="kpi-label">Con Potencial</div><div class="kpi-value" id="tmap-pot">0</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card wide"><div class="card-title">Score por Dimensión</div><canvas id="chart-tmap-dim"></canvas></div>
+        <div class="chart-card"><div class="card-title">Distribución Talent Mapping</div><canvas id="chart-tmap-adn"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Detalle del Mapeo</div>
+        <div class="table-wrapper">
+          <table id="table-tmap">
+            <thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Talent Match</th><th>Imagen</th><th>Gestión</th><th>Soft</th><th>Customer</th><th>Cultura</th><th>Score</th><th>Clasif. TM</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CALIBRACIÓN ============ -->
+    <div id="tab-calibracion" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Calibración</div>
+          <div class="section-sub">Validación y ajuste de la clasificación de Talent Mapping · Solo HRBP y Administradores</div>
+        </div>
+      </div>
+
+      <div class="filters-tags-card" id="calib-filters-container">
+        <div class="filters-tags-header">
+          <div class="filters-tags-title">Filtros activos</div>
+          <button class="filter-clear-btn" onclick="clearFilters('calib')">Limpiar filtros</button>
+        </div>
+        <div id="calib-filters-body"></div>
+        <!-- Filtro de estado -->
+        <div class="filter-section" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border); display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span class="filter-section-label">Estado</span>
+          <div class="filter-tag active" data-estado="" onclick="setCalibEstadoFilter(this,'')">Todos</div>
+          <div class="filter-tag" data-estado="Pendiente" onclick="setCalibEstadoFilter(this,'Pendiente')">Pendiente</div>
+          <div class="filter-tag" data-estado="Calibrado" onclick="setCalibEstadoFilter(this,'Calibrado')">Calibrado</div>
+        </div>
+      </div>
+
+      <!-- Progreso de calibración -->
+      <div id="calib-progress-card" class="card" style="padding:16px 20px;">
+        <div id="calib-progress-content"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Tabla de Calibración</div>
+        <div class="table-wrapper">
+          <table id="table-calib">
+            <thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Score VCD</th><th>Clasif. VCD</th><th>Clasif. Calibrada</th><th>Estado</th><th>Editado por</th><th>Acción</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TALENT REVIEW ============ -->
+    <div id="tab-talent-review" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Talent Review</div>
+          <div class="section-sub">Personas con potencial de crecimiento (Potencial = "Sí")</div>
+        </div>
+      </div>
+
+      <div class="filters-tags-card" id="tr-filters-container">
+        <div class="filters-tags-header">
+          <div class="filters-tags-title">Filtros activos</div>
+          <button class="filter-clear-btn" onclick="clearFilters('tr')">Limpiar filtros</button>
+        </div>
+        <div id="tr-filters-body"></div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi blue"><div class="kpi-label">Total con Potencial</div><div class="kpi-value" id="tr-total">0</div></div>
+        <div class="kpi green"><div class="kpi-label">Promotores</div><div class="kpi-value" id="tr-promotores">0</div></div>
+        <div class="kpi blue"><div class="kpi-label">Score Promedio</div><div class="kpi-value" id="tr-score">0.0</div></div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card"><div class="card-title">Distribución Talent Mapping</div><canvas id="chart-tr-adn"></canvas></div>
+        <div class="chart-card wide"><div class="card-title">Por Rol</div><canvas id="chart-tr-rol"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Detalle Talent Review</div>
+        <div class="table-wrapper">
+          <table id="table-tr">
+            <thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Distrito</th><th>Score</th><th>Clasif. TM</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PLAN DE ACCIÓN ============ -->
+    <div id="tab-plan-accion" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Plan de Acción por Distrito</div>
+          <div class="section-sub">Indicadores y plan de acción focalizado por distrito</div>
+        </div>
+        <button id="plan-export-btn" onclick="exportPlanAccion()" style="display:none;">⬇ Exportar planes</button>
+      </div>
+
+      <div class="card">
+        <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start;">
+          <div>
+            <label class="field-label">Filtrar por región</label>
+            <div id="plan-regiones-tags" class="filter-tags-row" style="margin-bottom: 8px;"></div>
+          </div>
+          <div style="flex: 1; min-width: 200px;">
+            <label class="field-label">Seleccionar distrito</label>
+            <div id="plan-distritos-tags" class="filter-tags-row"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="plan-content">
+        <div class="card no-data">Seleccioná un distrito para ver sus indicadores y plan de acción.</div>
+      </div>
+    </div>
+
+    <!-- ============ DATA MAESTRO ============ -->
+    <div id="tab-data-maestro" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Data Maestro</div>
+          <div class="section-sub">Nómina completa de evaluaciones</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Buscar / Filtrar</div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: end;">
+          <div style="flex: 1; min-width: 200px;">
+            <label class="field-label">Búsqueda</label>
+            <input type="text" id="dm-search" placeholder="Nombre o ID..." onkeyup="renderDataMaestro()">
+          </div>
+          <div>
+            <label class="field-label">Tipo</label>
+            <div class="filter-tags-row" id="dm-tipo-tags">
+              <div class="filter-tag active" data-value="" onclick="setDMTipo(this, '')">Todos</div>
+              <div class="filter-tag" data-value="nomina" onclick="setDMTipo(this, 'nomina')">Nómina</div>
+              <div class="filter-tag" data-value="nuevo" onclick="setDMTipo(this, 'nuevo')">Nuevo</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table id="table-dm">
+            <thead><tr><th>Nombre</th><th>ID SF</th><th>Rol</th><th>Tienda</th><th>Distrito</th><th>Antigüedad</th><th>Score</th><th>Clasif. TM</th><th>Reselección</th><th>Potencial</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CONFIGURACIÓN ============ -->
+    <div id="tab-configuracion" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Configuración</div>
+          <div class="section-sub">Ajustes del sistema · Solo Super Administrador y Administrador</div>
+        </div>
+      </div>
+
+      <!-- Upload Excel -->
+      <div class="card">
+        <div class="card-title">📥 Actualizar información desde Excel</div>
+        <p style="color: var(--text-dim); font-size: 12px; margin-bottom: 14px;">
+          Subí el Excel con la información actualizada del Talent Mapping. Los datos reemplazarán los actuales y se recalcularán automáticamente.
+        </p>
+        <label class="upload-box" id="upload-label">
+          <input type="file" id="upload-file" accept=".xlsx,.xls" onchange="handleFileUpload(event)">
+          <div class="upload-icon">📊</div>
+          <div class="upload-text">
+            <strong>Hacé click aquí</strong> o arrastrá un archivo Excel<br>
+            <span style="font-size: 11px; color: var(--text-muted);">Formatos: .xlsx, .xls</span>
+          </div>
+        </label>
+        <div id="upload-status" style="margin-top: 10px; font-size: 12px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">¿Cómo se calcula el Score Promedio?</div>
+        <p style="color: var(--text-dim); margin-bottom: 14px; line-height: 1.7; font-size: 13px;">
+          El <strong style="color: var(--text);">Score Talent Match</strong> es un promedio <strong style="color: var(--text);">ponderado</strong> de las 6 dimensiones.
+        </p>
+        <div style="background: var(--surface2); padding: 12px; border-radius: var(--radius); margin-bottom: 16px; font-family: monospace; font-size: 12px; color: var(--accent-strong);">
+          Score = (Fit × P₁ + Imagen × P₂ + Gestión × P₃ + Soft × P₄ + Customer × P₅ + Cultura × P₆) / 100
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px;">
+          <div><label class="field-label">Talent Match (%)</label><input type="number" id="p-fit" min="0" max="100" step="0.5" value="16.67"></div>
+          <div><label class="field-label">Imagen (%)</label><input type="number" id="p-img" min="0" max="100" step="0.5" value="16.67"></div>
+          <div><label class="field-label">Gestión (%)</label><input type="number" id="p-ges" min="0" max="100" step="0.5" value="16.67"></div>
+          <div><label class="field-label">Soft (%)</label><input type="number" id="p-sof" min="0" max="100" step="0.5" value="16.67"></div>
+          <div><label class="field-label">Customer (%)</label><input type="number" id="p-cus" min="0" max="100" step="0.5" value="16.67"></div>
+          <div><label class="field-label">Cultura (%)</label><input type="number" id="p-eng" min="0" max="100" step="0.5" value="16.65"></div>
+        </div>
+        <p style="font-size: 12px; color: var(--neutro); margin-bottom: 12px;">Suma actual: <span id="suma-pesos">100</span>%</p>
+        <div style="display: flex; gap: 8px;">
+          <button onclick="aplicarPesos()">Aplicar ponderación</button>
+          <button class="btn-secondary" onclick="restaurarPesos()">Restaurar valores por defecto</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Umbrales de Clasificación Talent Match</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+          <div><label class="field-label">Promotor (Score ≥)</label><input type="number" id="u-pro" min="0" max="5" step="0.1" value="4.0"></div>
+          <div><label class="field-label">Neutro (Score ≥)</label><input type="number" id="u-neu" min="0" max="5" step="0.1" value="3.0"></div>
+        </div>
+        <button onclick="aplicarUmbrales()">Aplicar umbrales</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Sistema</div>
+        <p style="color: var(--text-dim); margin-bottom: 8px; font-size: 12px;"><strong>Versión:</strong> 15.0</p>
+        <p style="color: var(--text-dim); margin-bottom: 8px; font-size: 12px;"><strong>Total Registros:</strong> <span id="conf-total">0</span></p>
+        <p style="color: var(--text-dim); margin-bottom: 12px; font-size: 12px;"><strong>Última actualización:</strong> <span id="conf-date">—</span></p>
+        <button onclick="exportarTodosLosDatos()">⬇ Exportar todos los datos</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL CALIBRACIÓN (clean) -->
+<div id="modal-calib" class="modal-overlay">
+  <div class="modal" style="max-width: 580px;">
+    <button class="modal-close" onclick="closeModal('modal-calib')">✕</button>
+    <div class="modal-header">Calibrar evaluación</div>
+
+    <div style="background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 16px;">
+      <div id="modal-info">—</div>
+    </div>
+
+    <!-- Calibración: Clasificación Talent Match (Promotor/Neutro/Detractor) -->
+    <div class="calib-card">
+      <div class="calib-card-title">✦ Calibrar clasificación Talent Match</div>
+      <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 10px;">Clasificación actual del VCD: <strong id="modal-clasif-actual" style="color: var(--text);">—</strong></div>
+      <div class="segmented-control" id="modal-clasif-segmented">
+        <div class="segmented-option opt-promotor" data-value="Promotor" onclick="setModalClasif(this, 'Promotor')">● Promotor</div>
+        <div class="segmented-option opt-neutro" data-value="Neutro" onclick="setModalClasif(this, 'Neutro')">● Neutro</div>
+        <div class="segmented-option opt-detractor" data-value="Detractor" onclick="setModalClasif(this, 'Detractor')">● Detractor</div>
+      </div>
+      <div id="modal-change-indicator" style="display: none;" class="change-indicator">
+        <span>⚠</span>
+        <span>Corregido: <span class="change-old" id="modal-change-old">—</span> <span class="change-arrow">→</span> <span class="change-new" id="modal-change-new">—</span> · Recalculado en todas las vistas</span>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Estado de la calibración</label>
+      <div class="segmented-control" id="modal-estado-segmented">
+        <div class="segmented-option" data-value="Pendiente" onclick="setModalEstado(this, 'Pendiente')">Pendiente</div>
+        <div class="segmented-option" data-value="Calibrado" onclick="setModalEstado(this, 'Calibrado')">Calibrado</div>
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Comentario (este guardado)</label>
+      <textarea id="modal-comment" placeholder="Observaciones de esta calibración..." rows="2"></textarea>
+    </div>
+
+    <!-- Historial de cambios -->
+    <div style="margin-bottom: 16px;">
+      <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 8px;">Historial de cambios</div>
+      <div id="modal-historial" style="max-height: 160px; overflow-y: auto; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11px; color: var(--text-dim);">
+        <div style="color: var(--text-muted); font-style: italic;">Sin historial todavía.</div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 8px;">
+      <button onclick="saveCalibration()" style="flex: 1;">Guardar calibración</button>
+      <button class="btn-secondary" onclick="closeModal('modal-calib')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: agregar tarea de plan de acción -->
+
+<script>
+/* ============================================================
+   USUARIOS · 4 niveles de acceso
+   - super_admin: Super Administrador (acceso total + configuración global)
+   - admin_country: Administrador de país (puede editar datos del país)
+   - viewer_global: Visualización total sin edición
+   - viewer_country: Visualización de un país sin Configuración
+   - hrbp: ve solo sus colaboradores; PUEDE calibrar
+   ============================================================ */
+const USERS = [
+  // Super Administradores (CM)
+  { user: "gzambaglione", password: "gz123",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Giannina Zambaglione" },
+  { user: "renrique",     password: "re123",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Ruth Enrique" },
+  { user: "mfalguieres",  password: "mf123",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Mario Falguieres" },
+
+  // Visualización global sin edición
+  { user: "dcarnero",     password: "dc123",  role: "viewer_global",  pais: "Todos",     hrbp: null, fullname: "Damián Carnero" },
+
+  // Visualización solo Argentina sin Configuración
+  { user: "calessandro",  password: "ca123",  role: "viewer_country_calib", pais: "Argentina", hrbp: null, fullname: "Cecilia Alessandro" },
+
+  // Capital Humano (Admin del país)
+  { user: "ch_ar",        password: "ch123",  role: "admin_country",  pais: "Argentina", hrbp: null, fullname: "Capital Humano AR" },
+
+  // HRBPs
+  { user: "fzangaro",     password: "fz123",  role: "hrbp",  pais: "Argentina", hrbp: "Fiamma Zangaro",     fullname: "Fiamma Zangaro" },
+  { user: "lpicon",       password: "lp123",  role: "hrbp",  pais: "Argentina", hrbp: "Lucila Picon",       fullname: "Lucila Picon" },
+  { user: "mpanebianco",  password: "mp123",  role: "hrbp",  pais: "Argentina", hrbp: "Micaela Panebianco", fullname: "Micaela Panebianco" }
+];
+
+let CURRENT_USER = null;
+let CURRENT_SESSION = null;
+
+/* ============================================================
+   DATA · 40 registros del Excel (con Marca, Localización, Provincia)
+   ============================================================ */
+let EXCEL_DATA = [
+  { usuario: "ar12024664", id_respuesta: 10504621, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12000068, nombre: "MARIA LAURA SPAGNA", fecha_contratacion: "2004-10-16", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-SAN ISIDRO 2", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 1, imagen: 3, gestion: 4, soft_skill: 4, customer: 3, engagement: 3, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024663", id_respuesta: 10503608, nombre_vcd: "ORIANA DIAZ", id_sf: 12000140, nombre: "LORENA ANALIA PARIENTE PEINECURA", fecha_contratacion: "2006-12-14", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-BAHIA BLANCA 1", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 2, imagen: 2, gestion: 1, soft_skill: 1, customer: 2, engagement: 1, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024663", id_respuesta: 10504107, nombre_vcd: "ORIANA DIAZ", id_sf: 12000181, nombre: "MIRTA ANDREA COSCARARTE", fecha_contratacion: "2007-11-02", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-TANDIL", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Instore VM", fit_adn: 3, imagen: 3, gestion: 4, soft_skill: 5, customer: 3, engagement: 4, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024663", id_respuesta: 10504069, nombre_vcd: "ORIANA DIAZ", id_sf: 12001055, nombre: "CARLA CELESTE TAMAYO", fecha_contratacion: "2015-01-20", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-TRELEW", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "CHUBUT", rol: "Instore VM", fit_adn: 3, imagen: 3, gestion: 3, soft_skill: 1, customer: 2, engagement: 1, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024663", id_respuesta: 10503875, nombre_vcd: "ORIANA DIAZ", id_sf: 12001308, nombre: "FLORENCIA ESTEBAN ROO", fecha_contratacion: "2016-04-07", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-BAHIA BLANCA 1", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Instore VM", fit_adn: 4, imagen: 4, gestion: 4, soft_skill: 5, customer: 4, engagement: 3, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504786, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12001392, nombre: "SOL FLORENCIA MATO", fecha_contratacion: "2016-07-14", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-SAN ISIDRO 2", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Instore VM", fit_adn: 2, imagen: 3, gestion: 3, soft_skill: 2, customer: 2, engagement: 2, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024664", id_respuesta: 10505330, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12005204, nombre: "LUNA MONTI", fecha_contratacion: "2017-01-09", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-SAN ISIDRO 2", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 1, imagen: 1, gestion: 2, soft_skill: 2, customer: 1, engagement: 2, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024664", id_respuesta: 10504761, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12010080, nombre: "ELISA MICAELA VALLEJOS", fecha_contratacion: "2018-03-02", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-MARTINEZ", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Instore VM", fit_adn: 3, imagen: 4, gestion: 3, soft_skill: 4, customer: 4, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024663", id_respuesta: 10503631, nombre_vcd: "ORIANA DIAZ", id_sf: 12013233, nombre: "ELIANA AGUSTINA FERREYRA", fecha_contratacion: "2018-11-05", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-MAR DEL PLATA 3", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 4, imagen: 5, gestion: 3, soft_skill: 5, customer: 4, engagement: 5, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024663", id_respuesta: 10503820, nombre_vcd: "ORIANA DIAZ", id_sf: 12016415, nombre: "AILEN ANAHI SEI", fecha_contratacion: "2023-01-16", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-USHUAIA", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "TIERRA DEL FUEGO", rol: "Store Experience Manager", fit_adn: 4, imagen: 5, gestion: 3, soft_skill: 5, customer: 4, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024663", id_respuesta: 10503541, nombre_vcd: "ORIANA DIAZ", id_sf: 12021902, nombre: "LUCIA ANTONELLA LATORRE", fecha_contratacion: "2021-12-13", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-MAR DEL PLATA 4", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 5, imagen: 4, gestion: 3, soft_skill: 5, customer: 5, engagement: 5, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024663", id_respuesta: 10503892, nombre_vcd: "ORIANA DIAZ", id_sf: 12022918, nombre: "AYELEN ROMINA MENELLI", fecha_contratacion: "2022-03-14", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-MAR DEL PLATA 3", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Instore VM", fit_adn: 5, imagen: 5, gestion: 5, soft_skill: 5, customer: 5, engagement: 5, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504772, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12023034, nombre: "MILAGROS ALEJANDRA FOLINO", fecha_contratacion: "2022-04-01", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-OLIVOS", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Instore VM", fit_adn: 4, imagen: 4, gestion: 4, soft_skill: 4, customer: 3, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504696, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12023162, nombre: "MANUELA AGUSTINA VILA", fecha_contratacion: "2022-04-18", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-CABILDO 2", hrbp: "Micaela Panebianco", localizacion: "CABA", provincia: "CABA", rol: "Instore VM", fit_adn: 2, imagen: 4, gestion: 3, soft_skill: 3, customer: 4, engagement: 3, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024663", id_respuesta: 10504087, nombre_vcd: "ORIANA DIAZ", id_sf: 12023948, nombre: "ROCIO AROSTEGUIS", fecha_contratacion: "2022-07-11", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-USHUAIA", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "TIERRA DEL FUEGO", rol: "Instore VM", fit_adn: 2, imagen: 2, gestion: 3, soft_skill: 4, customer: 3, engagement: 3, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024663", id_respuesta: 10503784, nombre_vcd: "ORIANA DIAZ", id_sf: 12024115, nombre: "JOSEFINA MOYANO", fecha_contratacion: "2022-11-01", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-BAHIA BLANCA 2", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 4, imagen: 4, gestion: 3, soft_skill: 4, customer: 3, engagement: 5, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024663", id_respuesta: 10503664, nombre_vcd: "ORIANA DIAZ", id_sf: 12024255, nombre: "BRISTINA MARLEN LUCERO", fecha_contratacion: "2022-08-16", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-TRELEW", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "CHUBUT", rol: "Store Experience Manager", fit_adn: 3, imagen: 3, gestion: 2, soft_skill: 2, customer: 2, engagement: 2, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024664", id_respuesta: 10504634, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12024923, nombre: "LUNA ABRIL GARRON", fecha_contratacion: "2022-10-11", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER 2", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 3, imagen: 4, gestion: 2, soft_skill: 2, customer: 3, engagement: 3, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504601, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12025222, nombre: "MARIA CANDELA LEGUIZAMON", fecha_contratacion: "2022-10-24", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-MARTINEZ", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 4, imagen: 4, gestion: 3, soft_skill: 4, customer: 4, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504714, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12025621, nombre: "FLORENCIA BELEN PONCE", fecha_contratacion: "2022-11-28", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-CABILDO 3", hrbp: "Micaela Panebianco", localizacion: "CABA", provincia: "CABA", rol: "Instore VM", fit_adn: 4, imagen: 5, gestion: 4, soft_skill: 3, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504401, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12026309, nombre: "AGUSTINA LUNA", fecha_contratacion: "2023-01-16", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-CABILDO 3", hrbp: "Micaela Panebianco", localizacion: "CABA", provincia: "CABA", rol: "Store Experience Manager", fit_adn: 1, imagen: 3, gestion: 2, soft_skill: 2, customer: 2, engagement: 1, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024663", id_respuesta: 10503851, nombre_vcd: "ORIANA DIAZ", id_sf: 12026584, nombre: "CECILIA DANIELA ALVAREZ", fecha_contratacion: "2023-02-06", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-COMODORO RIVADAVIA", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "CHUBUT", rol: "Store Experience Manager", fit_adn: 4, imagen: 4, gestion: 2, soft_skill: 3, customer: 3, engagement: 3, potencial: "No", reseleccion: "No" },
+  { usuario: "ar12024663", id_respuesta: 10503907, nombre_vcd: "ORIANA DIAZ", id_sf: 12026715, nombre: "TAMARA DUSSO", fecha_contratacion: "2023-02-22", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-MAR DEL PLATA 4", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Instore VM", fit_adn: 5, imagen: 5, gestion: 4, soft_skill: 4, customer: 3, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504670, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12028847, nombre: "LUCAS ANIBAL SANZ", fecha_contratacion: "2023-10-09", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-CABILDO", hrbp: "Micaela Panebianco", localizacion: "CABA", provincia: "CABA", rol: "Instore VM", fit_adn: 4, imagen: 4, gestion: 4, soft_skill: 3, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504282, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12029140, nombre: "YUSNELVIS JOSEFINA ARREAZA", fecha_contratacion: "2023-10-02", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-CABILDO", hrbp: "Micaela Panebianco", localizacion: "CABA", provincia: "CABA", rol: "Store Experience Manager", fit_adn: 5, imagen: 4, gestion: 4, soft_skill: 4, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504302, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12030305, nombre: "MICAELA AYELEN CORDOBA", fecha_contratacion: "2023-12-11", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 5, imagen: 5, gestion: 4, soft_skill: 4, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504327, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12030451, nombre: "FATIMA SANCHEZ", fecha_contratacion: "2023-12-13", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-CABILDO 2", hrbp: "Micaela Panebianco", localizacion: "CABA", provincia: "CABA", rol: "Store Experience Manager", fit_adn: 3, imagen: 4, gestion: 3, soft_skill: 3, customer: 3, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504810, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12033384, nombre: "SOFIA DANIELA NAVARRO", fecha_contratacion: "2024-10-01", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Instore VM", fit_adn: 4, imagen: 5, gestion: 3, soft_skill: 3, customer: 3, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505232, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12034385, nombre: "CAMILA LUJAN SUBAN", fecha_contratacion: "2024-12-09", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 5, imagen: 5, gestion: 4, soft_skill: 4, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505240, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12034989, nombre: "ANAHI MAIA PEREZ CHAPES", fecha_contratacion: "2025-02-03", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 4, imagen: 4, gestion: 4, soft_skill: 4, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505250, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12035085, nombre: "SANTINO MELEGARI", fecha_contratacion: "2025-02-17", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 5, imagen: 4, gestion: 3, soft_skill: 4, customer: 4, engagement: 5, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024663", id_respuesta: 10503579, nombre_vcd: "ORIANA DIAZ", id_sf: 12035217, nombre: "LORENA VANESA ESCUDERO", fecha_contratacion: "2025-03-05", unidad: "Argentina", marca: "IS", region: "Region 3", distrito: "Distrito 18", tienda: "IS-TANDIL", hrbp: "Lucila Picon", localizacion: "Interior", provincia: "BUENOS AIRES", rol: "Store Experience Manager", fit_adn: 5, imagen: 5, gestion: 3, soft_skill: 4, customer: 4, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505266, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12035450, nombre: "ROCIO QUILLEN PAOLO", fecha_contratacion: "2025-04-01", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 4, imagen: 4, gestion: 4, soft_skill: 4, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10504745, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12035462, nombre: "LARA SOFIA SCARNATI", fecha_contratacion: "2025-04-01", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-DOT 2", hrbp: "Micaela Panebianco", localizacion: "CABA", provincia: "CABA", rol: "Instore VM", fit_adn: 5, imagen: 5, gestion: 3, soft_skill: 3, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505280, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12035557, nombre: "VALENTINA LUNA CORONEL", fecha_contratacion: "2025-04-01", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 5, imagen: 4, gestion: 3, soft_skill: 4, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505289, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12036292, nombre: "MARTINA MONZON", fecha_contratacion: "2025-07-04", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 5, imagen: 5, gestion: 3, soft_skill: 4, customer: 5, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505302, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12036293, nombre: "LUCILA AYELEN TABOADA", fecha_contratacion: "2025-07-04", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 4, imagen: 4, gestion: 3, soft_skill: 3, customer: 4, engagement: 3, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505347, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12036496, nombre: "AGATA ABIGAIL ESPINOSA", fecha_contratacion: "2025-07-28", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-SAN ISIDRO 2", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 3, imagen: 4, gestion: 4, soft_skill: 3, customer: 4, engagement: 4, potencial: "No", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505311, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12036577, nombre: "ABRIL CARRION MUDARRA", fecha_contratacion: "2025-08-04", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 4, imagen: 4, gestion: 4, soft_skill: 4, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" },
+  { usuario: "ar12024664", id_respuesta: 10505319, nombre_vcd: "ROCIO SABRINA CAFIEL", id_sf: 12036602, nombre: "MARIA LUCILA GALLINARO", fecha_contratacion: "2025-08-04", unidad: "Argentina", marca: "TM", region: "Region 3", distrito: "Distrito 11", tienda: "TM-UNICENTER", hrbp: "Micaela Panebianco", localizacion: "GBA", provincia: "BUENOS AIRES", rol: "Sales Experience Assistant", fit_adn: 5, imagen: 5, gestion: 3, soft_skill: 4, customer: 4, engagement: 4, potencial: "Sí", reseleccion: "Sí" }
+];
+
+const CALIBRACION_DATA = {};
+const PLANES_DATA = {}; // { distrito: { acciones: [{accion, fecha, createdBy, createdAt}], ...} }
+const COMENTARIOS_PLAN = {}; // { personId: [{texto, fecha, usuario}] } — historial de observaciones por persona
+let charts = {};
+
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const PESOS_DEFAULT = { fit_adn: 16.67, imagen: 16.67, gestion: 16.67, soft_skill: 16.67, customer: 16.67, engagement: 16.65 };
+const CONFIG = {
+  pesos: { ...PESOS_DEFAULT },
+  umbrales: { promotor: 4.0, neutro: 3.0 }
+};
+
+/* ============================================================
+   ESTADO DE FILTROS · multi-selección por tags
+   filterState[tab][campo] = [array de valores]
+   ============================================================ */
+const filterState = {
+  dash:  { unidad: [], marca: [], region: [], distrito: [], tienda: [], localizacion: [], provincia: [], rol: [], anio: [] },
+  ni:    { unidad: [], marca: [], region: [], distrito: [], tienda: [], localizacion: [], provincia: [], rol: [], anio: [] },
+  tmap:  { marca: [], distrito: [], tienda: [] },
+  calib: { unidad: [], marca: [], region: [], distrito: [], tienda: [], localizacion: [], provincia: [], rol: [], anio: [] },
+  tr:    { unidad: [], marca: [], region: [], distrito: [], tienda: [], localizacion: [], provincia: [], rol: [], anio: [] }
+};
+
+// Orden fijo para roles/posiciones (cambio 9)
+const ROL_ORDER = ['Store Experience Manager', 'Instore VM', 'Sales Experience Assistant'];
+
+// Orden fijo para marca: TM primero, luego IS (cambio 4)
+const MARCA_ORDER = ['TM', 'IS'];
+let dmTipo = '';
+let currentDistritoPlan = '';
+let currentRegionPlan = '';
+let calibEstadoFilter = ''; // filtro de estado en calibración
+let modalCurrentClasif = null;
+let modalCurrentEstado = 'Pendiente';
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function calcularAntiguedad(fechaStr) {
+  const fecha = new Date(fechaStr);
+  const hoy = new Date();
+  let anios = hoy.getFullYear() - fecha.getFullYear();
+  if (hoy.getMonth() < fecha.getMonth() || (hoy.getMonth() === fecha.getMonth() && hoy.getDate() < fecha.getDate())) anios--;
+  return anios;
+}
+
+function antiguedadLabel(anios) {
+  if (anios < 1) return "Menos de 1 año";
+  if (anios === 1) return "1 año";
+  return anios + " años";
+}
+
+function calcularScore(person) {
+  const p = CONFIG.pesos;
+  const suma = p.fit_adn + p.imagen + p.gestion + p.soft_skill + p.customer + p.engagement;
+  if (suma === 0) return 0;
+  return (
+    (person.fit_adn || 0) * p.fit_adn +
+    (person.imagen || 0) * p.imagen +
+    (person.gestion || 0) * p.gestion +
+    (person.soft_skill || 0) * p.soft_skill +
+    (person.customer || 0) * p.customer +
+    (person.engagement || 0) * p.engagement
+  ) / suma;
+}
+
+function clasificar(score) {
+  if (score >= CONFIG.umbrales.promotor) return "Promotor";
+  if (score >= CONFIG.umbrales.neutro) return "Neutro";
+  return "Detractor";
+}
+
+// Devuelve la clasificación efectiva (calibrada si existe, sino la del VCD)
+function clasifFinal(p) {
+  const c = CALIBRACION_DATA[p.id];
+  if (c && c.clasificacion) return c.clasificacion;
+  return p.clasificacion;
+}
+
+function calcularNPS(data) {
+  if (!data.length) return 0;
+  const pro = data.filter(d => clasifFinal(d) === "Promotor").length;
+  const det = data.filter(d => clasifFinal(d) === "Detractor").length;
+  return (((pro - det) / data.length) * 100).toFixed(1);
+}
+
+function pctRecontratacion(data) {
+  if (!data.length) return 0;
+  const si = data.filter(d => d.reseleccion === "Sí").length;
+  return ((si / data.length) * 100).toFixed(1);
+}
+
+function classBadge(cls) {
+  return cls === 'Promotor' ? 'badge-promotor' : cls === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+}
+
+function shortName(t) {
+  return String(t || '').replace(/\s*\([^)]*\)\s*$/, '');
+}
+
+/* ============================================================
+   PERMISOS
+   ============================================================ */
+function canSeeConfiguracion() {
+  // Configuración solo para super_admin (cambio 8)
+  return CURRENT_SESSION.role === 'super_admin';
+}
+
+function canEditConfig() {
+  return ['super_admin'].includes(CURRENT_SESSION.role);
+}
+
+function canCalibrate() {
+  // HRBP, admin_country, super_admin y viewer_country_calib (Cecilia Alessandro / referente país)
+  return ['hrbp', 'admin_country', 'super_admin', 'viewer_country_calib'].includes(CURRENT_SESSION.role);
+}
+
+function canUploadFile() {
+  return ['super_admin', 'admin_country'].includes(CURRENT_SESSION.role);
+}
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+function performLogin(event) {
+  event.preventDefault();
+  const user = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  const found = USERS.find(u => u.user === user && u.password === password);
+  if (!found) { errEl.textContent = 'Usuario o contraseña incorrectos.'; return; }
+  try {
+    CURRENT_USER = found;
+    CURRENT_SESSION = { user: found.user, role: found.role, pais: found.pais, hrbp: found.hrbp, fullname: found.fullname };
+    try { sessionStorage.setItem('tm_session', JSON.stringify(CURRENT_SESSION)); } catch(e) {}
+    bootApp();
+  } catch (err) {
+    errEl.textContent = 'Error al iniciar sesión: ' + err.message;
+    console.error(err);
+  }
+}
+
+function performLogout() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  CURRENT_USER = null; CURRENT_SESSION = null;
+  try { sessionStorage.removeItem('tm_session'); } catch(e) {}
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('app').classList.add('hide');
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').textContent = '';
+}
+
+function roleLabel(role) {
+  return {
+    super_admin: 'Super Administrador',
+    admin_country: 'Administrador',
+    viewer_global: 'Visualización Global',
+    viewer_country: 'Visualización',
+    viewer_country_calib: 'Referente País',
+    hrbp: 'HRBP'
+  }[role] || role;
+}
+
+function bootApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hide');
+  document.getElementById('topbar-user-fullname').textContent = CURRENT_USER.fullname;
+  document.getElementById('topbar-user-role').textContent = roleLabel(CURRENT_SESSION.role);
+  applyRolePermissions();
+  initData();
+  document.getElementById('conf-total').textContent = EXCEL_DATA.length;
+  document.getElementById('conf-date').textContent = new Date().toLocaleDateString('es-AR');
+  switchTab('dashboard', document.querySelector('.tab[data-tab="dashboard"]'));
+}
+
+function applyRolePermissions() {
+  document.querySelectorAll('.tab').forEach(t => {
+    const tab = t.getAttribute('data-tab');
+    if (tab === 'configuracion') {
+      t.style.display = canSeeConfiguracion() ? '' : 'none';
+    } else if (tab === 'data-maestro' || tab === 'talent-mapping') {
+      // Data Maestro y Talent Match solo para admins
+      t.style.display = canSeeConfiguracion() ? '' : 'none';
+    }
+  });
+}
+
+/* ============================================================
+   DATA INIT
+   ============================================================ */
+function initData() {
+  EXCEL_DATA.forEach((d, idx) => {
+    d.id = idx + 1;
+    d.antiguedad_anios = calcularAntiguedad(d.fecha_contratacion);
+    d.tipo = d.antiguedad_anios < 1 ? "nuevo" : "nomina";
+    d.antiguedad_label = antiguedadLabel(d.antiguedad_anios);
+    // Año de mapeo: año actual de sesión (siempre >= 2026), no el año de contratación
+    d.anio = String(new Date().getFullYear());
+    d.score = calcularScore(d);
+    d.clasificacion = clasificar(d.score);
+    if (!CALIBRACION_DATA[d.id]) CALIBRACION_DATA[d.id] = { estado: 'Pendiente', clasificacion: null, comentario: '' };
+  });
+}
+
+function recalcularTodo() {
+  EXCEL_DATA.forEach(d => {
+    d.score = calcularScore(d);
+    d.clasificacion = clasificar(d.score);
+  });
+  // No tocar las calibraciones manuales
+  renderDashboard();
+}
+
+/* ============================================================
+   DATA SCOPE
+   ============================================================ */
+function dataScopedToUser() {
+  if (!CURRENT_SESSION) return [];
+  const role = CURRENT_SESSION.role;
+  if (role === 'super_admin' || role === 'viewer_global') return EXCEL_DATA;
+  if (role === 'admin_country' || role === 'viewer_country' || role === 'viewer_country_calib') return EXCEL_DATA.filter(d => d.unidad === CURRENT_SESSION.pais);
+  if (role === 'hrbp') return EXCEL_DATA.filter(d => d.hrbp === CURRENT_SESSION.hrbp);
+  return [];
+}
+
+/* ============================================================
+   NAVEGACIÓN
+   ============================================================ */
+function switchTab(tabName, element) {
+  // Configuración: solo super_admin
+  if (tabName === 'configuracion' && !canSeeConfiguracion()) {
+    alert('No tenés acceso a Configuración.'); return;
+  }
+  // Data Maestro y Talent Match: solo admins
+  if ((tabName === 'data-maestro' || tabName === 'talent-mapping') && !canSeeConfiguracion()) {
+    alert('No tenés acceso a esta sección.'); return;
+  }
+  // Plan de Acción: accesible para todos los roles (sin restricción)
+
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const panel = document.getElementById('tab-' + tabName);
+  if (panel) panel.classList.add('active');
+  if (element) element.classList.add('active');
+
+  if (tabName === 'dashboard') renderDashboard();
+  else if (tabName === 'nuevos') renderNuevosIngresos();
+  else if (tabName === 'talent-mapping') renderTalentMapping();
+  else if (tabName === 'calibracion') renderCalibration();
+  else if (tabName === 'talent-review') renderTalentReview();
+  else if (tabName === 'plan-accion') renderPlanAccion();
+  else if (tabName === 'data-maestro') renderDataMaestro();
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+/* ============================================================
+   FILTROS COMO TAGS
+   ============================================================ */
+const FIELD_LABELS = {
+  unidad: 'Unidad de Negocio',
+  marca: 'Marca',
+  region: 'Región',
+  distrito: 'Distrito',
+  tienda: 'Tienda',
+  localizacion: 'Localización',
+  provincia: 'Provincia',
+  rol: 'Posición / Rol',
+  anio: 'Año'
+};
+
+// CADENA JERÁRQUICA: Unidad → Marca → Región → Distrito → Tienda → Localización → Provincia → Rol → Año
+const HIERARCHY = ['unidad', 'marca', 'region', 'distrito', 'tienda', 'localizacion', 'provincia', 'rol', 'anio'];
+
+// Calcula el conjunto de datos visibles dado el estado actual de filtros hasta el campo anterior
+function universeForField(universe, tabKey, field) {
+  const chain = HIERARCHY;
+  const pos = chain.indexOf(field);
+  if (pos <= 0) return universe; // Unidad no tiene padre, el universo es el total
+
+  // Aplicar todos los filtros de los campos anteriores en la cadena
+  const f = filterState[tabKey];
+  let filtered = universe;
+  for (let i = 0; i < pos; i++) {
+    const parentField = chain[i];
+    if (f[parentField] && f[parentField].length > 0) {
+      filtered = filtered.filter(d => f[parentField].includes(d[parentField]));
+    }
+  }
+  return filtered;
+}
+
+function renderFilterTags(tabKey, containerId, universe, fields) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Contenedor horizontal compacto
+  const row = document.createElement('div');
+  row.className = 'filters-compact-row';
+
+  fields.forEach(field => {
+    const scopedUniverse = universeForField(universe, tabKey, field);
+    const rawValues = [...new Set(scopedUniverse.map(d => d[field]).filter(v => v))];
+    const values = sortedValues(field, rawValues);
+    if (values.length === 0) return;
+
+    const section = document.createElement('div');
+    section.className = 'filter-section';
+
+    const label = document.createElement('span');
+    label.className = 'filter-section-label';
+    label.textContent = FIELD_LABELS[field] || field;
+    section.appendChild(label);
+
+    values.forEach(value => {
+      const tag = document.createElement('div');
+      const isActive = filterState[tabKey][field] && filterState[tabKey][field].includes(value);
+      tag.className = 'filter-tag' + (isActive ? ' active' : '');
+      tag.textContent = shortName(value);
+      tag.title = value;
+      tag.onclick = () => toggleFilter(tabKey, field, value);
+      section.appendChild(tag);
+    });
+
+    row.appendChild(section);
+  });
+
+  container.appendChild(row);
+}
+
+function toggleFilter(tabKey, field, value) {
+  if (!filterState[tabKey][field]) filterState[tabKey][field] = [];
+  const arr = filterState[tabKey][field];
+  const idx = arr.indexOf(value);
+  if (idx >= 0) arr.splice(idx, 1);
+  else arr.push(value);
+
+  // Al cambiar un filtro padre, limpiar los filtros hijos en la jerarquía
+  const pos = HIERARCHY.indexOf(field);
+  if (pos >= 0) {
+    for (let i = pos + 1; i < HIERARCHY.length; i++) {
+      const child = HIERARCHY[i];
+      if (filterState[tabKey][child]) filterState[tabKey][child] = [];
+    }
+  }
+
+  if (tabKey === 'dash') renderDashboard();
+  else if (tabKey === 'ni') renderNuevosIngresos();
+  else if (tabKey === 'tmap') renderTalentMapping();
+  else if (tabKey === 'calib') renderCalibration();
+  else if (tabKey === 'tr') renderTalentReview();
+}
+
+function clearFilters(tabKey) {
+  Object.keys(filterState[tabKey]).forEach(k => filterState[tabKey][k] = []);
+  if (tabKey === 'dash') renderDashboard();
+  else if (tabKey === 'ni') renderNuevosIngresos();
+  else if (tabKey === 'tmap') renderTalentMapping();
+  else if (tabKey === 'calib') renderCalibration();
+  else if (tabKey === 'tr') renderTalentReview();
+}
+
+// Ordena un array de valores según orden fijo definido; los no listados van al final alfabéticamente
+function sortedValues(field, values) {
+  if (field === 'rol') {
+    const ordered = ROL_ORDER.filter(r => values.includes(r));
+    const rest = values.filter(v => !ROL_ORDER.includes(v)).sort();
+    return [...ordered, ...rest];
+  }
+  if (field === 'marca') {
+    const ordered = MARCA_ORDER.filter(m => values.includes(m));
+    const rest = values.filter(v => !MARCA_ORDER.includes(v)).sort();
+    return [...ordered, ...rest];
+  }
+  return [...values].sort();
+}
+
+function applyFilters(data, tabKey) {
+  const f = filterState[tabKey];
+  return data.filter(d =>
+    (!f.unidad || f.unidad.length === 0 || f.unidad.includes(d.unidad)) &&
+    (!f.marca || f.marca.length === 0 || f.marca.includes(d.marca)) &&
+    (!f.region || f.region.length === 0 || f.region.includes(d.region)) &&
+    (!f.distrito || f.distrito.length === 0 || f.distrito.includes(d.distrito)) &&
+    (!f.tienda || f.tienda.length === 0 || f.tienda.includes(d.tienda)) &&
+    (!f.localizacion || f.localizacion.length === 0 || f.localizacion.includes(d.localizacion)) &&
+    (!f.provincia || f.provincia.length === 0 || f.provincia.includes(d.provincia)) &&
+    (!f.rol || f.rol.length === 0 || f.rol.includes(d.rol)) &&
+    (!f.anio || f.anio.length === 0 || f.anio.includes(d.anio))
+  );
+}
+
+function setDMTipo(el, value) {
+  dmTipo = value;
+  document.querySelectorAll('#dm-tipo-tags .filter-tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderDataMaestro();
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard() {
+  const universe = dataScopedToUser();
+  renderFilterTags('dash', 'dash-filters-body', universe,
+    ['unidad', 'anio', 'marca', 'region', 'distrito', 'tienda', 'localizacion', 'provincia', 'rol']);
+
+  const data = applyFilters(universe, 'dash');
+
+  const pro = data.filter(d => clasifFinal(d) === "Promotor").length;
+  const neu = data.filter(d => clasifFinal(d) === "Neutro").length;
+  const det = data.filter(d => clasifFinal(d) === "Detractor").length;
+  const scoreProm = data.length ? (data.reduce((s, d) => s + d.score, 0) / data.length).toFixed(2) : '0.00';
+  const pot = data.filter(d => d.potencial === "Sí").length;
+  const re = pctRecontratacion(data);
+
+  document.getElementById('kpi-total').textContent = data.length;
+  document.getElementById('kpi-promotores').textContent = pro;
+  document.getElementById('kpi-neutros').textContent = neu;
+  document.getElementById('kpi-detractores').textContent = det;
+  document.getElementById('kpi-score-prom').textContent = scoreProm;
+  document.getElementById('kpi-salud').textContent = calcularNPS(data);
+  document.getElementById('kpi-recontratacion').textContent = re + '%';
+  document.getElementById('kpi-potencial').textContent = pot;
+
+  drawChart('chart-adn', 'doughnut', ['Promotor', 'Neutro', 'Detractor'], [pro, neu, det], ['#16a36a', '#d97706', '#dc2828'], data.length);
+
+  const si = data.filter(d => d.reseleccion === "Sí").length;
+  const no = data.length - si;
+  const pctSi = data.length ? ((si / data.length) * 100).toFixed(1) : 0;
+  drawDoughnutWithCenter('chart-recontratacion', ['Sí', 'No'], [si, no], ['#16a36a', '#dc2828'], pctSi + '%');
+
+  const marcas = [...new Set(data.map(d => d.marca))].sort();
+  drawStackedChart('chart-marca', marcas, [
+    { label: 'Promotores', data: marcas.map(m => data.filter(d => d.marca === m && clasifFinal(d) === "Promotor").length), color: '#16a36a' },
+    { label: 'Neutros',    data: marcas.map(m => data.filter(d => d.marca === m && clasifFinal(d) === "Neutro").length),   color: '#d97706' },
+    { label: 'Detractores',data: marcas.map(m => data.filter(d => d.marca === m && clasifFinal(d) === "Detractor").length),color: '#dc2828' }
+  ], data.length);
+
+  const tiendasArr = [...new Set(data.map(d => d.tienda))];
+  const tiendasTop = tiendasArr.map(t => ({
+    tienda: t,
+    det: data.filter(d => d.tienda === t && clasifFinal(d) === "Detractor").length,
+    neu: data.filter(d => d.tienda === t && clasifFinal(d) === "Neutro").length,
+    pro: data.filter(d => d.tienda === t && clasifFinal(d) === "Promotor").length,
+    total: data.filter(d => d.tienda === t).length,
+    distrito: (data.find(d => d.tienda === t) || {}).distrito || ''
+  })).filter(x => x.det > 0).sort((a, b) => b.det - a.det).slice(0, 10);
+
+  const tbody = document.querySelector('#table-top-detractores tbody');
+  tbody.innerHTML = '';
+  if (!tiendasTop.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="no-data">Sin detractores para los filtros seleccionados</td></tr>';
+  } else {
+    tiendasTop.forEach(t => {
+      const pct = ((t.det / t.total) * 100).toFixed(1);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><strong>${shortName(t.tienda)}</strong></td><td>${t.distrito}</td><td><span class="badge badge-detractor">${t.det}</span></td><td><span class="badge badge-neutro">${t.neu}</span></td><td><span class="badge badge-promotor">${t.pro}</span></td><td>${t.total}</td><td><strong style="color: var(--detractor);">${pct}%</strong></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+  makeSortable('table-top-detractores');
+  addTableSearch('table-top-detractores', 'Buscar tienda...');
+
+  const distritos = [...new Set(data.map(d => d.distrito))].sort();
+  drawStackedChart('chart-distrito', distritos, [
+    { label: 'Promotores',  data: distritos.map(r => data.filter(d => d.distrito === r && clasifFinal(d) === "Promotor").length),   color: '#16a36a' },
+    { label: 'Neutros',     data: distritos.map(r => data.filter(d => d.distrito === r && clasifFinal(d) === "Neutro").length),     color: '#d97706' },
+    { label: 'Detractores', data: distritos.map(r => data.filter(d => d.distrito === r && clasifFinal(d) === "Detractor").length),  color: '#dc2828' }
+  ], data.length);
+}
+
+/* ============================================================
+   NUEVOS INGRESOS
+   ============================================================ */
+function renderNuevosIngresos() {
+  const universe = dataScopedToUser().filter(d => d.tipo === "nuevo");
+
+  renderFilterTags('ni', 'ni-filters-body', universe,
+    ['unidad', 'anio', 'marca', 'region', 'distrito', 'tienda', 'localizacion', 'provincia', 'rol']);
+
+  const nuevos = applyFilters(universe, 'ni');
+
+  const pro = nuevos.filter(d => clasifFinal(d) === "Promotor").length;
+  const neu = nuevos.filter(d => clasifFinal(d) === "Neutro").length;
+  const det = nuevos.filter(d => clasifFinal(d) === "Detractor").length;
+  const scoreProm = nuevos.length ? (nuevos.reduce((s, d) => s + d.score, 0) / nuevos.length).toFixed(2) : '0.00';
+  const conPot = nuevos.filter(d => d.potencial === "Sí").length;
+  const pctPot = nuevos.length ? ((conPot / nuevos.length) * 100).toFixed(1) : 0;
+
+  document.getElementById('ni-total').textContent = nuevos.length;
+  document.getElementById('ni-promotores').textContent = pro;
+  document.getElementById('ni-neutros').textContent = neu;
+  document.getElementById('ni-detractores').textContent = det;
+  document.getElementById('ni-score-prom').textContent = scoreProm;
+  document.getElementById('ni-pct-potencial').textContent = pctPot + '%';
+
+  drawChart('chart-ni-adn', 'doughnut', ['Promotor', 'Neutro', 'Detractor'], [pro, neu, det], ['#16a36a', '#d97706', '#dc2828']);
+  const roles = sortedValues('rol', [...new Set(nuevos.map(d => d.rol))]);
+  drawChart('chart-ni-rol', 'bar', roles, roles.map(r => nuevos.filter(d => d.rol === r).length), ['#4c6ef5']);
+  // Agrupar tiendas por shortName para evitar duplicados por código
+  const tiendaMap = {};
+  nuevos.forEach(d => {
+    const key = shortName(d.tienda);
+    tiendaMap[key] = (tiendaMap[key] || 0) + 1;
+  });
+  const tiendaNombres = Object.keys(tiendaMap).sort();
+  drawChart('chart-ni-tienda', 'bar', tiendaNombres, tiendaNombres.map(t => tiendaMap[t]), ['#4c6ef5']);
+
+  const tbody = document.querySelector('#table-nuevos tbody');
+  tbody.innerHTML = '';
+  if (!nuevos.length) { tbody.innerHTML = '<tr><td colspan="7" class="no-data">Sin nuevos ingresos</td></tr>'; return; }
+  nuevos.forEach(d => {
+    const c = clasifFinal(d);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.distrito}</td><td>${d.score.toFixed(2)}</td><td><span class="badge ${classBadge(c)}">${c}</span></td><td>${d.potencial}</td>`;
+    tbody.appendChild(tr);
+  });
+  makeSortable('table-nuevos');
+  addTableSearch('table-nuevos');
+}
+
+/* ============================================================
+   TALENT MAPPING
+   ============================================================ */
+function renderTalentMapping() {
+  const universe = dataScopedToUser();
+  renderFilterTags('tmap', 'tmap-filters-body', universe, ['marca', 'distrito', 'tienda']);
+  const data = applyFilters(universe, 'tmap');
+
+  document.getElementById('tmap-total').textContent = data.length;
+  document.getElementById('tmap-score').textContent = data.length ? (data.reduce((s, d) => s + d.score, 0) / data.length).toFixed(2) : '0.00';
+  document.getElementById('tmap-pot').textContent = data.filter(d => d.potencial === "Sí").length;
+
+  const dims = ['fit_adn', 'imagen', 'gestion', 'soft_skill', 'customer', 'engagement'];
+  const dimAvg = dims.map(dim => {
+    const v = data.map(d => d[dim]).filter(x => x > 0);
+    return v.length ? (v.reduce((a, b) => a + b) / v.length).toFixed(2) : 0;
+  });
+  drawChart('chart-tmap-dim', 'bar', ['Talent Match', 'Imagen', 'Gestión', 'Soft', 'Customer', 'Cultura'], dimAvg, ['#4c6ef5']);
+  drawChart('chart-tmap-adn', 'doughnut', ['Promotor', 'Neutro', 'Detractor'],
+    [data.filter(d => clasifFinal(d) === "Promotor").length, data.filter(d => clasifFinal(d) === "Neutro").length, data.filter(d => clasifFinal(d) === "Detractor").length],
+    ['#16a36a', '#d97706', '#dc2828']);
+
+  const tbody = document.querySelector('#table-tmap tbody');
+  tbody.innerHTML = '';
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="11" class="no-data">Sin datos para los filtros</td></tr>'; return; }
+  data.forEach(d => {
+    const c = clasifFinal(d);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.fit_adn}</td><td>${d.imagen}</td><td>${d.gestion}</td><td>${d.soft_skill}</td><td>${d.customer}</td><td>${d.engagement}</td><td>${d.score.toFixed(2)}</td><td><span class="badge ${classBadge(c)}">${c}</span></td>`;
+    tbody.appendChild(tr);
+  });
+  makeSortable('table-tmap');
+  addTableSearch('table-tmap');
+}
+
+/* ============================================================
+   CALIBRACIÓN
+   ============================================================ */
+function setCalibEstadoFilter(el, estado) {
+  calibEstadoFilter = estado;
+  document.querySelectorAll('[data-estado]').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderCalibration();
+}
+
+function renderCalibration() {
+  const universe = dataScopedToUser();
+  renderFilterTags('calib', 'calib-filters-body', universe,
+    ['unidad', 'anio', 'marca', 'region', 'distrito', 'tienda', 'localizacion', 'provincia', 'rol']);
+  const dataFull = applyFilters(universe, 'calib');
+
+  // --- PROGRESO DE CALIBRACIÓN ---
+  const totalFull = dataFull.length;
+  const calibradosFull = dataFull.filter(d => (CALIBRACION_DATA[d.id]?.estado || 'Pendiente') === 'Calibrado').length;
+  const pendientesFull = totalFull - calibradosFull;
+  const pctCalib = totalFull > 0 ? Math.round((calibradosFull / totalFull) * 100) : 0;
+  const pctPend = 100 - pctCalib;
+  const progressEl = document.getElementById('calib-progress-content');
+  if (progressEl) {
+    progressEl.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+        <div style="font-family:var(--font-head); font-weight:700; font-size:14px;">Progreso de Calibración</div>
+        <div style="display:flex; gap:16px; font-size:12px;">
+          <span style="color:var(--promotor);">✓ Calibrados: <strong>${calibradosFull}</strong> (${pctCalib}%)</span>
+          <span style="color:var(--neutro);">◷ Pendientes: <strong>${pendientesFull}</strong> (${pctPend}%)</span>
+          <span style="color:var(--text-dim);">Total: <strong>${totalFull}</strong></span>
+        </div>
+      </div>
+      <div style="height:10px; background:var(--surface3); border-radius:999px; overflow:hidden;">
+        <div style="height:100%; width:${pctCalib}%; background:var(--promotor); border-radius:999px; transition:width 0.4s;"></div>
+      </div>
+    `;
+  }
+
+  // --- FILTRO DE ESTADO + TABLA ---
+  const data = calibEstadoFilter
+    ? dataFull.filter(d => (CALIBRACION_DATA[d.id]?.estado || 'Pendiente') === calibEstadoFilter)
+    : dataFull;
+
+  const tbody = document.querySelector('#table-calib tbody');
+  tbody.innerHTML = '';
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" class="no-data">Sin datos para los filtros</td></tr>'; return; }
+  data.forEach(d => {
+    const calib = CALIBRACION_DATA[d.id] || { estado: 'Pendiente', clasificacion: null };
+    const wasCalibrated = calib.clasificacion && calib.clasificacion !== d.clasificacion;
+    const editorInfo = calib.ultimo_usuario
+      ? `<div style="font-size: 10px; color: var(--text-muted);">${calib.ultimo_usuario}</div><div style="font-size: 10px; color: var(--text-muted);">${calib.ultima_edicion || ''}</div>`
+      : '<span style="color: var(--text-muted); font-size: 11px;">—</span>';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${d.nombre}</strong></td>
+      <td>${d.rol}</td>
+      <td>${shortName(d.tienda)}</td>
+      <td>${d.score.toFixed(2)}</td>
+      <td><span class="badge ${classBadge(d.clasificacion)}">${d.clasificacion}</span></td>
+      <td>${
+        calib.clasificacion
+          ? `<span class="badge ${classBadge(calib.clasificacion)}">${calib.clasificacion}</span>${wasCalibrated ? ' <span style="font-size: 10px; color: var(--text-muted);">(ajustado)</span>' : ''}`
+          : '—'
+      }</td>
+      <td>${calib.estado}</td>
+      <td>${editorInfo}</td>
+      <td>${canCalibrate() ? `<button class="btn-sm" onclick="openCalib(${d.id})">Calibrar</button>` : '<span style="color: var(--text-muted); font-size: 11px;">Solo lectura</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  defaultSortCalibration('table-calib');
+  makeSortable('table-calib');
+  addTableSearch('table-calib');
+}
+
+function setModalClasif(el, value) {
+  modalCurrentClasif = value;
+  document.querySelectorAll('#modal-clasif-segmented .segmented-option').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+
+  // Mostrar indicador de cambio si difiere de la original
+  const original = document.getElementById('modal-clasif-actual').textContent.trim();
+  const indicator = document.getElementById('modal-change-indicator');
+  if (value !== original) {
+    document.getElementById('modal-change-old').textContent = original;
+    document.getElementById('modal-change-new').textContent = value;
+    indicator.style.display = 'flex';
+    indicator.classList.remove('confirmed');
+  } else {
+    indicator.style.display = 'none';
+  }
+}
+
+function setModalEstado(el, value) {
+  modalCurrentEstado = value;
+  document.querySelectorAll('#modal-estado-segmented .segmented-option').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function openCalib(personId) {
+  if (!canCalibrate()) { alert('No tenés permisos para calibrar.'); return; }
+  const p = EXCEL_DATA.find(d => d.id === personId);
+  const calib = CALIBRACION_DATA[personId] || { estado: 'Pendiente', clasificacion: null, comentario: '', historial: [] };
+
+  document.getElementById('modal-info').innerHTML = `
+    <strong>${p.nombre}</strong>
+    <div style="font-size: 11px; color: var(--text-dim); margin-top: 6px; line-height: 1.6;">
+      Rol: ${p.rol} · Tienda: ${shortName(p.tienda)}<br>
+      Distrito: ${p.distrito} · HRBP: ${p.hrbp} · VCD: ${p.nombre_vcd}<br>
+      Score VCD: <strong style="color: var(--text);">${p.score.toFixed(2)}</strong> · Potencial: ${p.potencial} · Reselección: ${p.reseleccion}
+    </div>
+  `;
+  document.getElementById('modal-clasif-actual').textContent = p.clasificacion;
+
+  const currentClasif = calib.clasificacion || p.clasificacion;
+  modalCurrentClasif = currentClasif;
+  document.querySelectorAll('#modal-clasif-segmented .segmented-option').forEach(s => {
+    s.classList.toggle('active', s.dataset.value === currentClasif);
+  });
+
+  const indicator = document.getElementById('modal-change-indicator');
+  if (calib.clasificacion && calib.clasificacion !== p.clasificacion) {
+    document.getElementById('modal-change-old').textContent = p.clasificacion;
+    document.getElementById('modal-change-new').textContent = calib.clasificacion;
+    indicator.style.display = 'flex';
+    indicator.classList.add('confirmed');
+  } else {
+    indicator.style.display = 'none';
+  }
+
+  modalCurrentEstado = calib.estado || 'Pendiente';
+  document.querySelectorAll('#modal-estado-segmented .segmented-option').forEach(s => {
+    s.classList.toggle('active', s.dataset.value === modalCurrentEstado);
+  });
+
+  document.getElementById('modal-comment').value = '';
+
+  // Renderizar historial
+  const historial = calib.historial || [];
+  const histEl = document.getElementById('modal-historial');
+  if (!historial.length) {
+    histEl.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">Sin historial todavía.</div>';
+  } else {
+    histEl.innerHTML = historial.slice().reverse().map(h => `
+      <div style="padding: 6px 0; border-bottom: 1px solid var(--border); line-height: 1.5;">
+        <span style="font-weight: 600; color: var(--text);">${h.usuario}</span>
+        <span style="color: var(--text-muted);"> · ${h.fecha}</span><br>
+        ${h.clasif_anterior !== h.clasif_nueva
+          ? `<span class="badge ${classBadge(h.clasif_anterior)}" style="font-size:9px;">${h.clasif_anterior}</span>
+             <span style="color: var(--text-muted);"> → </span>
+             <span class="badge ${classBadge(h.clasif_nueva)}" style="font-size:9px;">${h.clasif_nueva}</span> `
+          : ''}
+        <span style="color: var(--text-dim);">Estado: ${h.estado}</span>
+        ${h.comentario ? `<br><span style="color: var(--text-dim); font-style: italic;">"${h.comentario}"</span>` : ''}
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('modal-calib').dataset.personId = personId;
+  openModal('modal-calib');
+}
+
+async function saveCalibration() {
+  if (!canCalibrate()) { alert('No tenés permisos para calibrar.'); return; }
+  const personId = parseInt(document.getElementById('modal-calib').dataset.personId);
+  const p = EXCEL_DATA.find(d => d.id === personId);
+  if (!modalCurrentClasif) { alert('Seleccioná una clasificación.'); return; }
+
+  const prev = CALIBRACION_DATA[personId] || { estado: 'Pendiente', clasificacion: p.clasificacion, historial: [] };
+  const comentario = document.getElementById('modal-comment').value.trim();
+
+  // Agregar entrada al historial
+  const entrada = {
+    fecha: new Date().toLocaleString('es-AR'),
+    usuario: CURRENT_USER.fullname,
+    clasif_anterior: prev.clasificacion || p.clasificacion,
+    clasif_nueva: modalCurrentClasif,
+    estado: modalCurrentEstado,
+    comentario: comentario
+  };
+
+  CALIBRACION_DATA[personId] = {
+    estado: modalCurrentEstado,
+    clasificacion: modalCurrentClasif,
+    clasificacion_original: p.clasificacion,
+    comentario: comentario,
+    historial: [...(prev.historial || []), entrada],
+    ultima_edicion: entrada.fecha,
+    ultimo_usuario: CURRENT_USER.fullname
+  };
+  
+  // Guardar en Supabase
+  const saved = await saveCalibrationToSupabase();
+  if (saved) {
+    closeModal('modal-calib');
+    renderCalibration();
+  }
+}
+
+/* ============================================================
+   TALENT REVIEW
+   ============================================================ */
+function renderTalentReview() {
+  const universe = dataScopedToUser().filter(d => d.potencial === "Sí");
+  renderFilterTags('tr', 'tr-filters-body', universe,
+    ['unidad', 'anio', 'marca', 'region', 'distrito', 'tienda', 'localizacion', 'provincia', 'rol']);
+  const data = applyFilters(universe, 'tr');
+
+  const pro = data.filter(d => clasifFinal(d) === "Promotor").length;
+  const neu = data.filter(d => clasifFinal(d) === "Neutro").length;
+  const det = data.filter(d => clasifFinal(d) === "Detractor").length;
+
+  document.getElementById('tr-total').textContent = data.length;
+  document.getElementById('tr-promotores').textContent = pro;
+  document.getElementById('tr-score').textContent = data.length ? (data.reduce((s, d) => s + d.score, 0) / data.length).toFixed(2) : '0.00';
+
+  drawChart('chart-tr-adn', 'doughnut', ['Promotor', 'Neutro', 'Detractor'], [pro, neu, det], ['#16a36a', '#d97706', '#dc2828']);
+  const roles = [...new Set(data.map(d => d.rol))];
+  drawChart('chart-tr-rol', 'bar', roles, roles.map(r => data.filter(d => d.rol === r).length), ['#4c6ef5']);
+
+  const tbody = document.querySelector('#table-tr tbody');
+  tbody.innerHTML = '';
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="6" class="no-data">Sin personas con potencial</td></tr>'; return; }
+  data.forEach(d => {
+    const c = clasifFinal(d);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.distrito}</td><td>${d.score.toFixed(2)}</td><td><span class="badge ${classBadge(c)}">${c}</span></td>`;
+    tbody.appendChild(tr);
+  });
+  makeSortable('table-tr');
+  addTableSearch('table-tr');
+}
+
+/* ============================================================
+   DATA MAESTRO
+   ============================================================ */
+function renderDataMaestro() {
+  const search = (document.getElementById('dm-search')?.value || '').toLowerCase();
+  let data = dataScopedToUser();
+  if (dmTipo) data = data.filter(d => d.tipo === dmTipo);
+  if (search) data = data.filter(d => d.nombre.toLowerCase().includes(search) || String(d.id_sf).includes(search));
+
+  const tbody = document.querySelector('#table-dm tbody');
+  tbody.innerHTML = '';
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="10" class="no-data">Sin datos</td></tr>'; return; }
+  data.forEach(d => {
+    const c = clasifFinal(d);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${d.nombre}</td><td>${d.id_sf}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.distrito}</td><td>${d.antiguedad_label}</td><td>${d.score.toFixed(2)}</td><td><span class="badge ${classBadge(c)}">${c}</span></td><td>${d.reseleccion}</td><td>${d.potencial}</td>`;
+    tbody.appendChild(tr);
+  });
+  makeSortable('table-dm');
+  addTableSearch('table-dm');
+}
+
+/* ============================================================
+   PLAN DE ACCIÓN
+   ============================================================ */
+function renderPlanAccion() {
+  const universe = dataScopedToUser();
+
+  // Tags de regiones
+  const regiones = [...new Set(universe.map(d => d.region))].sort();
+  const regionesEl = document.getElementById('plan-regiones-tags');
+  if (regionesEl) {
+    regionesEl.innerHTML = '';
+    regiones.forEach(r => {
+      const tag = document.createElement('div');
+      tag.className = 'filter-tag' + (currentRegionPlan === r ? ' active' : '');
+      tag.textContent = r;
+      tag.onclick = () => {
+        currentRegionPlan = (currentRegionPlan === r ? '' : r);
+        currentDistritoPlan = ''; // reset distrito al cambiar región
+        renderPlanAccion();
+      };
+      regionesEl.appendChild(tag);
+    });
+  }
+
+  // Filtrar distritos según región seleccionada
+  const universeFiltrado = currentRegionPlan
+    ? universe.filter(d => d.region === currentRegionPlan)
+    : universe;
+  const distritos = [...new Set(universeFiltrado.map(d => d.distrito))].sort();
+
+  // Auto-seleccionar el primer distrito si no hay ninguno seleccionado
+  if (!currentDistritoPlan && distritos.length > 0) {
+    currentDistritoPlan = distritos[0];
+  }
+
+  // Tags de distritos
+  const tagsEl = document.getElementById('plan-distritos-tags');
+  if (tagsEl) {
+    tagsEl.innerHTML = '';
+    distritos.forEach(d => {
+      const tag = document.createElement('div');
+      tag.className = 'filter-tag' + (currentDistritoPlan === d ? ' active' : '');
+      tag.textContent = d;
+      tag.onclick = () => {
+        currentDistritoPlan = (currentDistritoPlan === d ? '' : d);
+        renderPlanAccion();
+      };
+      tagsEl.appendChild(tag);
+    });
+  }
+
+  // Mostrar botón de exportar según permisos
+  const exportBtn = document.getElementById('plan-export-btn');
+  if (exportBtn) {
+    const canExport = ['super_admin', 'admin_country'].includes(CURRENT_SESSION.role);
+    exportBtn.style.display = canExport ? '' : 'none';
+  }
+
+  const content = document.getElementById('plan-content');
+  if (!currentDistritoPlan) {
+    content.innerHTML = '<div class="card no-data">Seleccioná un distrito para ver sus indicadores y plan de acción.</div>';
+    return;
+  }
+
+  const data = universeFiltrado.filter(d => d.distrito === currentDistritoPlan);
+  if (!data.length) {
+    content.innerHTML = '<div class="card no-data">Sin datos para este distrito.</div>';
+    return;
+  }
+
+  const total = data.length;
+  const pro  = data.filter(d => clasifFinal(d) === "Promotor").length;
+  const neu  = data.filter(d => clasifFinal(d) === "Neutro").length;
+  const det  = data.filter(d => clasifFinal(d) === "Detractor").length;
+  const pctPro = ((pro / total) * 100).toFixed(1);
+  const pctNeu = ((neu / total) * 100).toFixed(1);
+  const pctDet = ((det / total) * 100).toFixed(1);
+  const nps    = calcularNPS(data);
+  const conPot = data.filter(d => d.potencial === "Sí").length;
+
+  const plan = PLANES_DATA[currentDistritoPlan] || { acciones: [] };
+  const acciones = plan.acciones || [];
+
+  // Color badge según tipo de acción
+  function tipoBadge(tipo) {
+    if (tipo === 'Detractor') return `<span class="badge badge-detractor" style="font-size:9px;">Detractor</span>`;
+    if (tipo === 'Neutro')    return `<span class="badge badge-neutro"    style="font-size:9px;">Neutro</span>`;
+    if (tipo === 'Promotor')  return `<span class="badge badge-promotor"  style="font-size:9px;">Promotor</span>`;
+    return '';
+  }
+
+  // Ordenar acciones: Detractores → Neutros → Promotores
+  const TIPO_ORDER = ['Detractor', 'Neutro', 'Promotor'];
+  const accionesOrdenadas = [...acciones].sort((a, b) =>
+    TIPO_ORDER.indexOf(a.tipo) - TIPO_ORDER.indexOf(b.tipo)
+  );
+
+  const accionesHTML = accionesOrdenadas.length === 0
+    ? `<div style="color: var(--text-muted); font-size: 12px; font-style: italic; margin-bottom: 12px;">No hay acciones registradas todavía.</div>`
+    : accionesOrdenadas.map((a) => {
+        const originalIdx = acciones.indexOf(a);
+        return `
+          <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px;">
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                ${tipoBadge(a.tipo)}
+                <span style="font-weight: 500; font-size: 13px; color: var(--text);">${a.accion}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted);">
+                ${a.fecha ? `📅 ${a.fecha} · ` : ''}👤 ${a.createdBy} · ${a.createdAt}
+              </div>
+            </div>
+            <button onclick="deleteAccion(${originalIdx})" style="background: transparent; color: var(--detractor); border: 1px solid var(--detractor-border); font-size: 10px; padding: 3px 8px;">Eliminar</button>
+          </div>
+        `;
+      }).join('');
+
+  content.innerHTML = `
+    <div class="kpi-grid">
+      <div class="kpi blue"><div class="kpi-label">Total Distrito</div><div class="kpi-value">${total}</div></div>
+      <div class="kpi red"><div class="kpi-label">% Detractores</div><div class="kpi-value">${pctDet}%</div><div class="kpi-sub">${det} personas</div></div>
+      <div class="kpi orange"><div class="kpi-label">% Neutrales</div><div class="kpi-value">${pctNeu}%</div><div class="kpi-sub">${neu} personas</div></div>
+      <div class="kpi green"><div class="kpi-label">% Promotores</div><div class="kpi-value">${pctPro}%</div><div class="kpi-sub">${pro} personas</div></div>
+      <div class="kpi blue"><div class="kpi-label">Salud Cultural (NPS)</div><div class="kpi-value">${nps}</div></div>
+      <div class="kpi purple"><div class="kpi-label">Con Potencial</div><div class="kpi-value">${conPot}</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title-row">
+        <div class="card-title">Plan de Acción · ${currentDistritoPlan}</div>
+        <span style="font-size: 11px; color: var(--text-muted);">${acciones.length} acción(es) registrada(s)</span>
+      </div>
+
+      ${accionesHTML}
+
+      <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+        <div style="flex: 1; min-width: 200px;">
+          <label class="field-label">Nueva acción concreta <span style="color:var(--detractor);">*</span></label>
+          <input type="text" id="plan-nueva-accion" placeholder="Describí la acción a realizar...">
+        </div>
+        <div>
+          <label class="field-label">Corresponde a <span style="color:var(--detractor);">*</span></label>
+          <div id="plan-tipo-tags" class="filter-tags-row" style="gap:4px;">
+            <div class="filter-tag" data-tipo="Detractor" onclick="selectPlanTipo(this,'Detractor')" style="border-color: var(--detractor-border); color: var(--detractor);">Detractor</div>
+            <div class="filter-tag" data-tipo="Neutro"    onclick="selectPlanTipo(this,'Neutro')"    style="border-color: var(--neutro-border); color: var(--neutro);">Neutro</div>
+            <div class="filter-tag" data-tipo="Promotor"  onclick="selectPlanTipo(this,'Promotor')"  style="border-color: var(--promotor-border); color: var(--promotor);">Promotor</div>
+          </div>
+        </div>
+        <div style="min-width: 150px;">
+          <label class="field-label">Fecha de seguimiento <span style="color:var(--detractor);">*</span></label>
+          <input type="date" id="plan-nueva-fecha">
+        </div>
+        <div style="padding-bottom: 2px;">
+          <button onclick="addAccion()">+ Agregar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title-row">
+        <div class="card-title">Personas del distrito por clasificación</div>
+        <input type="text" id="plan-personas-search" placeholder="Buscar persona..." oninput="filterPlanPersonas(this.value)" style="min-width:unset;width:200px;font-size:12px;padding:5px 10px;">
+      </div>
+      <div style="margin-bottom: 8px;">
+        <strong style="color: var(--detractor); font-size: 12px;">Detractores (${det})</strong>
+      </div>
+      ${det === 0 ? '<div class="no-data" style="padding:10px;">Sin detractores 🎉</div>' :
+        '<div class="table-wrapper" style="margin-bottom:12px;"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Score</th><th>Observaciones</th></tr></thead><tbody>' +
+        data.filter(d => clasifFinal(d) === "Detractor").map(d =>
+          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div><div style="display:flex;gap:4px;"><input type="text" id="obs-input-${d.id}" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment(${d.id},document.getElementById('obs-input-'+${d.id}).value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
+        ).join('') + '</tbody></table></div>'}
+      <div style="margin-bottom: 8px;">
+        <strong style="color: var(--neutro); font-size: 12px;">Neutros (${neu})</strong>
+      </div>
+      ${neu === 0 ? '<div class="no-data" style="padding:10px;">Sin neutros</div>' :
+        '<div class="table-wrapper" style="margin-bottom:12px;"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Score</th><th>Observaciones</th></tr></thead><tbody>' +
+        data.filter(d => clasifFinal(d) === "Neutro").map(d =>
+          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div><div style="display:flex;gap:4px;"><input type="text" id="obs-input-${d.id}" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment(${d.id},document.getElementById('obs-input-'+${d.id}).value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
+        ).join('') + '</tbody></table></div>'}
+      <div style="margin-bottom: 8px;">
+        <strong style="color: var(--promotor); font-size: 12px;">Promotores (${pro})</strong>
+      </div>
+      ${pro === 0 ? '<div class="no-data" style="padding:10px;">Sin promotores</div>' :
+        '<div class="table-wrapper"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Score</th><th>Observaciones</th></tr></thead><tbody>' +
+        data.filter(d => clasifFinal(d) === "Promotor").map(d =>
+          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div><div style="display:flex;gap:4px;"><input type="text" id="obs-input-${d.id}" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment(${d.id},document.getElementById('obs-input-'+${d.id}).value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
+        ).join('') + '</tbody></table></div>'}
+    </div>
+  `;
+}
+
+let _planTipoSeleccionado = null;
+
+function selectPlanTipo(el, tipo) {
+  _planTipoSeleccionado = tipo;
+  document.querySelectorAll('#plan-tipo-tags .filter-tag').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function addAccion() {
+  const accion = document.getElementById('plan-nueva-accion')?.value.trim();
+  const fecha  = document.getElementById('plan-nueva-fecha')?.value || '';
+  // Campos obligatorios
+  if (!accion) { alert('La acción concreta es obligatoria.'); return; }
+  if (!fecha)  { alert('La fecha de seguimiento es obligatoria.'); return; }
+  if (!_planTipoSeleccionado) { alert('Seleccioná el tipo (Detractor, Neutro o Promotor).'); return; }
+
+  if (!PLANES_DATA[currentDistritoPlan]) PLANES_DATA[currentDistritoPlan] = { acciones: [] };
+  PLANES_DATA[currentDistritoPlan].acciones.push({
+    accion:    accion,
+    tipo:      _planTipoSeleccionado,
+    fecha:     fecha,
+    createdBy: CURRENT_USER?.fullname || 'Usuario',
+    createdAt: new Date().toLocaleString('es-AR')
+  });
+  _planTipoSeleccionado = null;
+  renderPlanAccion();
+}
+
+function deleteAccion(idx) {
+  if (!confirm('¿Eliminar esta acción?')) return;
+  if (PLANES_DATA[currentDistritoPlan]) {
+    PLANES_DATA[currentDistritoPlan].acciones.splice(idx, 1);
+    renderPlanAccion();
+  }
+}
+
+function savePlanComment(personId, value) {
+  personId = parseInt(personId);
+  value = value.trim();
+  if (!value) return;
+  if (!COMENTARIOS_PLAN[personId]) COMENTARIOS_PLAN[personId] = [];
+  COMENTARIOS_PLAN[personId].push({
+    texto: value,
+    fecha: new Date().toLocaleDateString('es-AR'),
+    hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+    usuario: CURRENT_USER?.fullname || 'Usuario'
+  });
+  // Actualizar input para mostrar que se guardó, sin re-render completo
+  const input = document.getElementById('obs-input-' + personId);
+  if (input) input.value = '';
+  const lastEl = document.getElementById('obs-last-' + personId);
+  if (lastEl) {
+    const hist = COMENTARIOS_PLAN[personId];
+    const last = hist[hist.length - 1];
+    lastEl.innerHTML = `<span style="color:var(--text);">"${last.texto}"</span> <span style="color:var(--text-muted);font-size:10px;">${last.fecha} ${last.hora} · ${last.usuario}</span>`;
+  }
+}
+
+function filterPlanPersonas(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('#plan-content tbody tr').forEach(row => {
+    row.style.display = q === '' || row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function exportPlanAccion() {
+  if (!['super_admin', 'admin_country'].includes(CURRENT_SESSION.role)) { alert('No tenés permisos para exportar el Plan de Acción.'); return; }
+
+  const distritos = Object.keys(PLANES_DATA);
+  if (!distritos.length) { alert('No hay planes de acción registrados.'); return; }
+
+  let csv = 'Distrito;Tipo;Acción;Fecha seguimiento;Creado por;Fecha creación\n';
+  distritos.forEach(dist => {
+    const acciones = PLANES_DATA[dist]?.acciones || [];
+    acciones.forEach(a => {
+      csv += `"${dist}";"${a.tipo || ''}";"${a.accion}";"${a.fecha}";"${a.createdBy}";"${a.createdAt}"\n`;
+    });
+  });
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `plan_accion_export_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function savePlan() { addAccion(); }
+
+function exportarTodosLosDatos() {
+  if (CURRENT_SESSION.role !== 'super_admin') { alert('Solo el Super Administrador puede exportar.'); return; }
+  const headers = ['ID SF','Nombre','Rol','Tienda','Distrito','Región','Provincia','HRBP','VCD','Año Contratación','Antigüedad','Score','Clasif. TM','ADN Fit','Imagen','Gestión','Soft','Customer','Cultura','Potencial','Reselección','Calibrado','Clasif. Calibrada','Comentario Calibración'];
+  const rows = EXCEL_DATA.map(d => {
+    const calib = CALIBRACION_DATA[d.id] || {};
+    return [
+      d.id_sf, `"${d.nombre}"`, `"${d.rol}"`, `"${shortName(d.tienda)}"`, d.distrito, d.region, d.provincia,
+      d.hrbp, d.nombre_vcd, d.anio, d.antiguedad_label,
+      d.score.toFixed(2), clasifFinal(d), d.fit_adn, d.imagen, d.gestion, d.soft_skill, d.customer, d.engagement,
+      d.potencial, d.reseleccion,
+      calib.estado || 'Pendiente', calib.clasificacion || '', `"${(calib.comentario||'').replace(/"/g,'""')}"`
+    ].join(';');
+  });
+  const csv = headers.join(';') + '\n' + rows.join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `talent_mapping_export_${new Date().toLocaleDateString('es-AR').replace(/\//g, '-')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   UPLOAD EXCEL
+   ============================================================ */
+function handleFileUpload(event) {
+  if (!canUploadFile()) { alert('No tenés permisos para actualizar datos.'); return; }
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById('upload-status');
+  statusEl.innerHTML = '<span style="color: var(--accent);">⏳ Procesando archivo...</span>';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+      const sheetName = workbook.SheetNames.find(n => /talent.*mapping/i.test(n)) || workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      if (!json.length) { statusEl.innerHTML = '<span style="color: var(--detractor);">❌ El archivo está vacío.</span>'; return; }
+
+      // Mapear columnas tolerando diferencias menores en nombres
+      const mapped = json.map(r => mapRow(r)).filter(r => r && r.nombre);
+
+      if (!mapped.length) {
+        statusEl.innerHTML = '<span style="color: var(--detractor);">❌ No se encontraron registros válidos. Verificá las columnas del Excel.</span>';
+        return;
+      }
+
+      EXCEL_DATA = mapped;
+      initData();
+      document.getElementById('conf-total').textContent = EXCEL_DATA.length;
+      document.getElementById('conf-date').textContent = new Date().toLocaleDateString('es-AR');
+      statusEl.innerHTML = `<span style="color: var(--promotor);">✅ ${mapped.length} registros cargados correctamente.</span>`;
+
+      // Limpiar event para permitir re-cargar el mismo archivo
+      event.target.value = '';
+    } catch (err) {
+      console.error(err);
+      statusEl.innerHTML = '<span style="color: var(--detractor);">❌ Error al procesar el archivo: ' + err.message + '</span>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function findField(row, patterns) {
+  // Busca el primer campo que matchee con alguno de los patterns
+  const keys = Object.keys(row);
+  for (const pat of patterns) {
+    const k = keys.find(k => k.toLowerCase().includes(pat.toLowerCase()));
+    if (k) return row[k];
+  }
+  return '';
+}
+
+function mapRow(row) {
+  const nombre = findField(row, ['Nombre (Persona', 'Nombre Persona', 'Nombre evaluada']);
+  if (!nombre) return null;
+
+  const fechaCont = findField(row, ['Fecha de contratacion', 'Fecha contratación', 'fecha contratacion']);
+  let fechaStr = '';
+  if (fechaCont) {
+    if (fechaCont instanceof Date) fechaStr = fechaCont.toISOString().split('T')[0];
+    else fechaStr = String(fechaCont).split(' ')[0];
+  }
+
+  return {
+    usuario: String(findField(row, ['Usuario']) || ''),
+    id_respuesta: findField(row, ['ID de la respuesta', 'ID respuesta']) || 0,
+    nombre_vcd: String(findField(row, ['Nombre VCD']) || ''),
+    id_sf: findField(row, ['ID Success Factor', 'ID SF']) || 0,
+    nombre: String(nombre),
+    fecha_contratacion: fechaStr,
+    unidad: String(findField(row, ['Unidad de Negocio', 'Unidad']) || ''),
+    marca: String(findField(row, ['Marca']) || ''),
+    region: String(findField(row, ['Region', 'Región']) || ''),
+    distrito: String(findField(row, ['Distrito']) || ''),
+    tienda: String(findField(row, ['Tienda']) || ''),
+    hrbp: String(findField(row, ['HRBP']) || ''),
+    localizacion: String(findField(row, ['Localización', 'Localizacion']) || ''),
+    provincia: String(findField(row, ['Provincia']) || ''),
+    rol: String(findField(row, ['Título puesto actual', 'puesto actual', 'Rol']) || ''),
+    fit_adn: Number(findField(row, ['FIT ADN', 'Fit ADN'])) || 0,
+    imagen: Number(findField(row, ['IMAGEN DE MARCA', 'Imagen'])) || 0,
+    gestion: Number(findField(row, ['GESTION DEL NEGOCIO', 'Gestión'])) || 0,
+    soft_skill: Number(findField(row, ['SOFT SKILL', 'LIDERAZGO'])) || 0,
+    customer: Number(findField(row, ['CUSTOMER EXPERIENCE', 'Customer'])) || 0,
+    engagement: Number(findField(row, ['ENGAGEMENT', 'CULTURA'])) || 0,
+    potencial: String(findField(row, ['POTENCIAL Y DESARROLLO', 'Potencial'])) || '',
+    reseleccion: String(findField(row, ['volverías a seleccionar', 'reseleccion'])) || ''
+  };
+}
+
+/* ============================================================
+   CONFIGURACIÓN
+   ============================================================ */
+function aplicarPesos() {
+  if (!canEditConfig()) { alert('No tenés permisos.'); return; }
+  const fit = parseFloat(document.getElementById('p-fit').value) || 0;
+  const img = parseFloat(document.getElementById('p-img').value) || 0;
+  const ges = parseFloat(document.getElementById('p-ges').value) || 0;
+  const sof = parseFloat(document.getElementById('p-sof').value) || 0;
+  const cus = parseFloat(document.getElementById('p-cus').value) || 0;
+  const eng = parseFloat(document.getElementById('p-eng').value) || 0;
+  const tot = fit + img + ges + sof + cus + eng;
+  document.getElementById('suma-pesos').textContent = tot.toFixed(2);
+  if (Math.abs(tot - 100) > 0.5) { alert('La suma debe ser 100%. Actualmente: ' + tot.toFixed(2) + '%'); return; }
+  CONFIG.pesos = { fit_adn: fit, imagen: img, gestion: ges, soft_skill: sof, customer: cus, engagement: eng };
+  recalcularTodo(); alert('Ponderación aplicada.');
+}
+
+function aplicarUmbrales() {
+  if (!canEditConfig()) { alert('No tenés permisos.'); return; }
+  const pro = parseFloat(document.getElementById('u-pro').value) || 4.0;
+  const neu = parseFloat(document.getElementById('u-neu').value) || 3.0;
+  if (pro <= neu) { alert('El umbral Promotor debe ser mayor al Neutro.'); return; }
+  CONFIG.umbrales = { promotor: pro, neutro: neu };
+  recalcularTodo(); alert('Umbrales aplicados.');
+}
+
+function restaurarPesos() {
+  CONFIG.pesos = { ...PESOS_DEFAULT };
+  document.getElementById('p-fit').value = PESOS_DEFAULT.fit_adn;
+  document.getElementById('p-img').value = PESOS_DEFAULT.imagen;
+  document.getElementById('p-ges').value = PESOS_DEFAULT.gestion;
+  document.getElementById('p-sof').value = PESOS_DEFAULT.soft_skill;
+  document.getElementById('p-cus').value = PESOS_DEFAULT.customer;
+  document.getElementById('p-eng').value = PESOS_DEFAULT.engagement;
+  document.getElementById('suma-pesos').textContent = '100.00';
+  recalcularTodo();
+}
+
+/* ============================================================
+   BUSCADOR EN TABLAS — búsqueda nominal en todas las tablas
+   ============================================================ */
+function filterTableBySearch(tableId, query) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const q = query.toLowerCase();
+  table.querySelectorAll('tbody tr').forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = q === '' || text.includes(q) ? '' : 'none';
+  });
+}
+
+// Agrega un buscador encima de la tabla (si no existe ya)
+function addTableSearch(tableId, placeholder) {
+  placeholder = placeholder || 'Buscar persona...';
+  const searchId = 'search_' + tableId;
+  if (document.getElementById(searchId)) return; // ya existe
+  const wrapper = document.getElementById(tableId)?.closest('.table-wrapper');
+  if (!wrapper) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.id = searchId;
+  input.placeholder = placeholder;
+  input.style.cssText = 'margin-bottom:8px;font-size:12px;padding:6px 10px;width:260px;';
+  input.oninput = () => filterTableBySearch(tableId, input.value);
+  wrapper.parentNode.insertBefore(input, wrapper);
+}
+
+/* ============================================================
+   SORT TABLES — ordenamiento genérico por columna
+   ============================================================ */
+const sortState = {}; // { tableId: { col: N, dir: 'asc'|'desc' } }
+
+function makeSortable(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const ths = table.querySelectorAll('thead th');
+  ths.forEach((th, colIdx) => {
+    // Agregar icono si no tiene
+    if (!th.querySelector('.sort-icon')) {
+      const icon = document.createElement('span');
+      icon.className = 'sort-icon';
+      th.appendChild(icon);
+    }
+    th.onclick = () => sortTableByCol(tableId, colIdx);
+  });
+}
+
+function sortTableByCol(tableId, colIdx) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+
+  const prev = sortState[tableId] || { col: -1, dir: 'asc' };
+  const dir = (prev.col === colIdx && prev.dir === 'asc') ? 'desc' : 'asc';
+  sortState[tableId] = { col: colIdx, dir };
+
+  // Update header classes
+  table.querySelectorAll('thead th').forEach((th, i) => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (i === colIdx) th.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+  });
+
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort((a, b) => {
+    const aCell = a.querySelectorAll('td')[colIdx];
+    const bCell = b.querySelectorAll('td')[colIdx];
+    if (!aCell || !bCell) return 0;
+    const aText = aCell.textContent.trim();
+    const bText = bCell.textContent.trim();
+    const aNum = parseFloat(aText);
+    const bNum = parseFloat(bText);
+    let cmp;
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      cmp = aNum - bNum;
+    } else {
+      cmp = aText.localeCompare(bText, 'es', { sensitivity: 'base' });
+    }
+    return dir === 'asc' ? cmp : -cmp;
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+// Ordenamiento predeterminado para Calibración: Promotores → Neutros → Detractores
+const CLASIF_ORDER = { 'Promotor': 0, 'Neutro': 1, 'Detractor': 2 };
+function defaultSortCalibration(tableId) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort((a, b) => {
+    // Columna "Clasif. VCD" = índice 4
+    const aText = a.querySelectorAll('td')[4]?.textContent.trim() || '';
+    const bText = b.querySelectorAll('td')[4]?.textContent.trim() || '';
+    const aOrder = CLASIF_ORDER[aText] ?? 99;
+    const bOrder = CLASIF_ORDER[bText] ?? 99;
+    return aOrder - bOrder;
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+/* ============================================================
+   CHARTS — tooltips con N y %
+   ============================================================ */
+function drawChart(canvasId, type, labels, data, colors, total) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (charts[canvasId]) charts[canvasId].destroy();
+  const tot = total || data.reduce((a, b) => a + b, 0);
+  charts[canvasId] = new Chart(ctx, {
+    type: type,
+    data: { labels: labels, datasets: [{ label: 'Valor', data: data, backgroundColor: type === 'doughnut' ? colors : colors[0] + 'cc', borderColor: colors[0], borderWidth: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#6b7390', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: (ctx2) => {
+              const val = ctx2.parsed.y !== undefined ? ctx2.parsed.y : ctx2.parsed;
+              const pct = tot > 0 ? ((val / tot) * 100).toFixed(1) : 0;
+              return ` ${ctx2.label || ''}: ${val} (${pct}%)`;
+            }
+          }
+        }
+      },
+      scales: (type === 'doughnut' || type === 'radar') ? {} : {
+        y: { beginAtZero: true, ticks: { color: '#6b7390' }, grid: { color: 'rgba(20,30,60,0.06)' } },
+        x: { ticks: { color: '#6b7390' }, grid: { color: 'rgba(20,30,60,0.06)' } }
+      }
+    }
+  });
+}
+
+function drawStackedChart(canvasId, labels, series, total) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (charts[canvasId]) charts[canvasId].destroy();
+  const tot = total || series.reduce((sum, s) => sum + s.data.reduce((a, b) => a + b, 0), 0);
+  charts[canvasId] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: labels, datasets: series.map(s => ({ label: s.label, data: s.data, backgroundColor: s.color, borderColor: s.color, borderWidth: 1 })) },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#6b7390', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: (ctx2) => {
+              const val = ctx2.parsed.y;
+              const pct = tot > 0 ? ((val / tot) * 100).toFixed(1) : 0;
+              return ` ${ctx2.dataset.label}: ${val} (${pct}%)`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: '#6b7390' }, grid: { color: 'rgba(20,30,60,0.06)' } },
+        y: { stacked: true, beginAtZero: true, ticks: { color: '#6b7390' }, grid: { color: 'rgba(20,30,60,0.06)' } }
+      }
+    }
+  });
+}
+
+function drawDoughnutWithCenter(canvasId, labels, data, colors, centerText) {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (charts[canvasId]) charts[canvasId].destroy();
+  const centerPlugin = {
+    id: 'centerText_' + canvasId,
+    beforeDraw: (chart) => {
+      const { width, height, ctx: chartCtx } = chart;
+      chartCtx.save();
+      const text = centerText || '';
+      const fontSize = Math.min(width, height) / 7;
+      chartCtx.font = `700 ${fontSize}px Plus Jakarta Sans, sans-serif`;
+      chartCtx.fillStyle = '#16a36a';
+      chartCtx.textAlign = 'center';
+      chartCtx.textBaseline = 'middle';
+      chartCtx.fillText(text, width / 2, height / 2);
+      chartCtx.restore();
+    }
+  };
+  charts[canvasId] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderColor: colors, borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { labels: { color: '#6b7390', font: { size: 11 } } } } },
+    plugins: [centerPlugin]
+  });
+}
+
+/* ============================================================
+   SUPABASE INIT
+   ============================================================ */
+const SUPABASE_URL = 'https://xmqrewclhdodvjzadxqj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_SBQE00qYq4nx-8AHsKOVHQ_yH69zbGQ';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+async function saveCalibrationToSupabase() {
+  if (!modalPersonId) return;
+  
+  const data = {
+    user_id: CURRENT_USER?.user || 'anonymous',
+    person_id: modalPersonId,
+    classification: document.getElementById('modal-clasif')?.value || '',
+    estado: document.getElementById('modal-estado')?.value || '',
+    notes: document.getElementById('modal-notes')?.value || ''
+  };
+  
+  try {
+    const { error } = await supabase
+      .from('calibration_data')
+      .insert([data]);
+    
+    if (error) {
+      console.error('Error guardando:', error);
+      alert('Error al guardar en Supabase: ' + error.message);
+      return false;
+    }
+    console.log('Datos guardados en Supabase ✓');
+    return true;
+  } catch (e) {
+    console.error('Exception:', e);
+    return false;
+  }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  let saved = null;
+  try { saved = sessionStorage.getItem('tm_session'); } catch(e) {}
+  if (saved) {
+    try {
+      CURRENT_SESSION = JSON.parse(saved);
+      CURRENT_USER = USERS.find(u => u.user === CURRENT_SESSION.user);
+      if (CURRENT_USER) bootApp();
+    } catch (e) { try { sessionStorage.removeItem('tm_session'); } catch(err) {} }
+  }
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+});
+</script>
+</body>
+</html>

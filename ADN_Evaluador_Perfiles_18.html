@@ -1,0 +1,2881 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADN Evaluador · BSG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+  /* ===== CSS VARIABLES ===== */
+  :root {
+    --bg: #0a0c10;
+    --surface: #11141b;
+    --surface2: #181c26;
+    --surface3: #1e2330;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text-dim: #7a8099;
+    --text-muted: #4a5068;
+    --accent: #4f7fff;
+    --accent-glow: rgba(79,127,255,0.2);
+    --promotor: #22c98e;
+    --promotor-bg: rgba(34,201,142,0.1);
+    --neutro: #f5a623;
+    --neutro-bg: rgba(245,166,35,0.1);
+    --detractor: #ff4f6a;
+    --detractor-bg: rgba(255,79,106,0.1);
+    --radius: 12px;
+    --radius-lg: 18px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --font-head: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ===== LAYOUT ===== */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ===== TOPBAR ===== */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    height: 64px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-brand { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #7b5eff);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 800; font-size: 14px; color: #fff;
+  }
+  .topbar-title { font-family: var(--font-head); font-weight: 700; font-size: 17px; letter-spacing: -0.3px; }
+  .topbar-sub { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+  /* ===== TABS ===== */
+  .tabs {
+    display: flex; gap: 4px;
+    padding: 0 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 14px 20px; cursor: pointer;
+    font-family: var(--font-head); font-weight: 600; font-size: 13px; letter-spacing: 0.3px;
+    color: var(--text-dim); border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-color: var(--accent); }
+
+  /* ===== MAIN ===== */
+  .main { flex: 1; padding: 28px 32px; }
+
+  /* ===== SECTION HEADERS ===== */
+  .section-header { margin-bottom: 20px; }
+  .section-title { font-family: var(--font-head); font-weight: 700; font-size: 22px; letter-spacing: -0.5px; }
+  .section-sub { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+  }
+  .card-title {
+    font-family: var(--font-head); font-weight: 600; font-size: 13px;
+    letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+
+  /* ===== KPI GRID ===== */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .kpi {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    position: relative; overflow: hidden;
+  }
+  .kpi-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); margin-bottom: 8px; }
+  .kpi-value { font-family: var(--font-head); font-size: 32px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+  .kpi.green .kpi-value { color: var(--promotor); }
+  .kpi.orange .kpi-value { color: var(--neutro); }
+  .kpi.red .kpi-value { color: var(--detractor); }
+  .kpi.blue .kpi-value { color: var(--accent); }
+  .kpi::after {
+    content: ''; position: absolute; top: 0; right: 0; width: 60px; height: 60px;
+    border-radius: 50%; transform: translate(20px, -20px);
+  }
+  .kpi.green::after { background: var(--promotor-bg); }
+  .kpi.orange::after { background: var(--neutro-bg); }
+  .kpi.red::after { background: var(--detractor-bg); }
+  .kpi.blue::after { background: var(--accent-glow); }
+
+  /* ===== CHARTS GRID ===== */
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .chart-card.wide { grid-column: span 2; }
+  .chart-card canvas { max-height: 220px; }
+
+  /* ===== FILTERS BAR ===== */
+  .filters-bar {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    padding: 16px 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  .filter-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); }
+  select, input[type="text"], input[type="number"] {
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 7px 12px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+  .search-input { width: 200px; }
+  .spacer { flex: 1; }
+
+  /* ===== BUTTONS ===== */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: var(--font-head); font-weight: 600; font-size: 13px;
+    transition: all 0.2s; text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3d6aff; box-shadow: 0 4px 16px var(--accent-glow); }
+  .btn-ghost { background: var(--surface3); color: var(--text); border: 1px solid var(--border2); }
+  .btn-ghost:hover { background: var(--surface2); border-color: var(--accent); color: var(--accent); }
+  .btn-sm { padding: 5px 11px; font-size: 12px; }
+  .btn-danger { background: var(--detractor-bg); color: var(--detractor); border: 1px solid rgba(255,79,106,0.2); }
+  .btn-danger:hover { background: rgba(255,79,106,0.2); }
+
+  /* ===== TABLE ===== */
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { position: sticky; top: 0; z-index: 10; }
+  thead tr { background: var(--surface2); }
+  th {
+    padding: 12px 14px; text-align: left;
+    font-family: var(--font-head); font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim);
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr { background: var(--surface); transition: background 0.15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  .score-cell { font-family: var(--font-head); font-weight: 700; font-size: 15px; }
+
+  /* ===== BADGES ===== */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .badge-promotor { background: var(--promotor-bg); color: var(--promotor); border: 1px solid rgba(34,201,142,0.25); }
+  .badge-neutro { background: var(--neutro-bg); color: var(--neutro); border: 1px solid rgba(245,166,35,0.25); }
+  .badge-detractor { background: var(--detractor-bg); color: var(--detractor); border: 1px solid rgba(255,79,106,0.25); }
+  .badge-nuevo { background: rgba(79,127,255,0.12); color: var(--accent); border: 1px solid rgba(79,127,255,0.25); font-size: 10px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ===== FORM ===== */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); }
+  .form-input { width: 100%; }
+  .dim-section { margin-top: 20px; }
+  .dim-title {
+    font-family: var(--font-head); font-weight: 700; font-size: 14px;
+    padding: 10px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dim-weight { font-size: 11px; color: var(--accent); background: var(--accent-glow); padding: 2px 8px; border-radius: 20px; }
+  .rating-group { display: flex; gap: 8px; align-items: center; }
+  .rating-btn {
+    width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--border2);
+    background: var(--surface3); color: var(--text-dim); font-family: var(--font-head);
+    font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .rating-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .rating-btn.active-1 { background: var(--detractor-bg); border-color: var(--detractor); color: var(--detractor); }
+  .rating-btn.active-2 { background: var(--neutro-bg); border-color: var(--neutro); color: var(--neutro); }
+  .rating-btn.active-3 { background: var(--promotor-bg); border-color: var(--promotor); color: var(--promotor); }
+  .rating-label { font-size: 11px; color: var(--text-muted); }
+  .questions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .question-row { display: flex; flex-direction: column; gap: 7px; }
+  .question-text { font-size: 13px; color: var(--text); line-height: 1.4; }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 500; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 28px; max-width: 860px; width: 95%;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .modal-title { font-family: var(--font-head); font-weight: 800; font-size: 20px; }
+  .modal-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 20px; padding: 4px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+
+  /* ===== ALERTS ===== */
+  .alert { padding: 12px 16px; border-radius: var(--radius); font-size: 13px; margin-bottom: 16px; display: flex; align-items: flex-start; gap: 10px; }
+  .alert-warning { background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.3); color: var(--neutro); }
+  .alert-info { background: var(--accent-glow); border: 1px solid rgba(79,127,255,0.3); color: var(--accent); }
+
+  /* ===== IMPORT AREA ===== */
+  .import-area {
+    border: 2px dashed var(--border2); border-radius: var(--radius);
+    padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s;
+  }
+  .import-area:hover { border-color: var(--accent); background: var(--accent-glow); }
+  .import-icon { font-size: 32px; margin-bottom: 10px; }
+  .import-text { color: var(--text-dim); font-size: 13px; }
+  textarea.csv-input {
+    width: 100%; min-height: 120px; background: var(--surface3);
+    border: 1px solid var(--border2); border-radius: var(--radius);
+    color: var(--text); font-family: monospace; font-size: 12px;
+    padding: 12px; resize: vertical; outline: none;
+  }
+  textarea.csv-input:focus { border-color: var(--accent); }
+
+  /* ===== RANK TABLE ===== */
+  .rank-badge {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--surface3);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 700; font-size: 11px;
+  }
+
+  /* ===== MINI SCORE BAR ===== */
+  .score-bar { height: 4px; border-radius: 4px; background: var(--surface3); overflow: hidden; margin-top: 4px; }
+  .score-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+  /* ===== HIDDEN ===== */
+  .hidden { display: none !important; }
+
+  /* ===== TAB PANELS ===== */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ===== RESUMEN EJECUTIVO ===== */
+  .exec-summary {
+    background: linear-gradient(135deg, var(--surface2) 0%, var(--surface3) 100%);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-lg); padding: 24px 28px; margin-bottom: 24px;
+    position: relative; overflow: hidden;
+  }
+  .exec-summary::before {
+    content: ''; position: absolute; top: -40px; right: -40px;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: var(--accent-glow);
+  }
+  .exec-title { font-family: var(--font-head); font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .exec-main { font-family: var(--font-head); font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  .exec-detail { font-size: 13px; color: var(--text-dim); max-width: 600px; line-height: 1.6; }
+  .isc-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 8px 16px; margin-top: 14px;
+  }
+  .isc-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .isc-value { font-family: var(--font-head); font-weight: 800; font-size: 22px; }
+
+  /* ===== TALENT REVIEW TAB ===== */
+  .tab-talent { color: #c97fff !important; }
+  .tab-talent.active { border-color: #c97fff; }
+
+  .tr-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-wrap: wrap; gap: 16px; margin-bottom: 20px;
+  }
+  .tr-icon-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(201,127,255,0.15); color: #c97fff; font-size: 16px;
+    border: 1px solid rgba(201,127,255,0.3);
+  }
+
+  /* Potential toggle */
+  .tr-pot-toggle { display: flex; gap: 6px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+  .tr-pot-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 7px; border: none; cursor: pointer;
+    background: none; color: var(--text-dim); font-family: var(--font-head);
+    font-weight: 600; font-size: 12px; transition: all 0.2s;
+  }
+  .tr-pot-btn.active { background: var(--surface3); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+  .tr-pot-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .tr-pot-dot.alto { background: #c97fff; box-shadow: 0 0 6px rgba(201,127,255,0.6); }
+  .tr-pot-dot.medio { background: var(--neutro); }
+
+  /* Insights bar */
+  .tr-insights {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .tr-insight {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px; flex: 1; min-width: 240px;
+  }
+  .tr-insight-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+  .tr-insight-text { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+  .tr-insight-text strong { color: var(--text); }
+
+  /* Charts row */
+  .tr-charts-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tr-charts-row .chart-card { min-width: 260px; }
+
+  /* Potential badge */
+  .pot-badge-alto {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    background: rgba(201,127,255,0.12); color: #c97fff;
+    border: 1px solid rgba(201,127,255,0.3); text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .pot-badge-medio {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    background: var(--neutro-bg); color: var(--neutro);
+    border: 1px solid rgba(245,166,35,0.25); text-transform: uppercase; letter-spacing: 0.4px;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.3px; cursor: pointer; border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .status-listo  { background: rgba(34,201,142,0.1); color: var(--promotor); border-color: rgba(34,201,142,0.2); }
+  .status-dev    { background: rgba(79,127,255,0.1); color: var(--accent); border-color: rgba(79,127,255,0.2); }
+  .status-obs    { background: rgba(245,166,35,0.1); color: var(--neutro); border-color: rgba(245,166,35,0.2); }
+  .status-none   { background: var(--surface3); color: var(--text-muted); border-color: var(--border2); }
+
+  /* Detail modal specifics */
+  .tr-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .tr-dim-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+    background: var(--surface2); border-radius: 8px; border: 1px solid var(--border);
+  }
+  .tr-dim-label { font-size: 12px; color: var(--text-dim); flex: 1; }
+  .tr-dim-val { font-family: var(--font-head); font-weight: 800; font-size: 16px; }
+  .tr-dim-bar-wrap { width: 60px; height: 4px; background: var(--surface3); border-radius: 4px; }
+  .tr-dim-bar-fill { height: 100%; border-radius: 4px; }
+
+  /* HIPO ribbon */
+  .hipo-ribbon {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: linear-gradient(90deg, rgba(201,127,255,0.2), rgba(79,127,255,0.15));
+    border: 1px solid rgba(201,127,255,0.35); border-radius: 20px;
+    padding: 3px 12px; font-size: 10px; font-weight: 800;
+    color: #c97fff; letter-spacing: 0.8px; text-transform: uppercase;
+  }
+
+  .tab-review { color: var(--accent) !important; }
+  .tab-review.active { border-color: var(--accent); }
+
+  .review-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px; margin-bottom: 24px;
+  }
+  .review-steps { display: flex; align-items: center; gap: 0; }
+  .rstep {
+    display: flex; align-items: center; gap: 7px; cursor: default;
+    padding: 8px 12px; border-radius: var(--radius);
+    transition: all 0.2s;
+  }
+  .rstep-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--surface3); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 700; font-size: 11px;
+    color: var(--text-muted); transition: all 0.25s;
+  }
+  .rstep-label { font-size: 12px; font-weight: 600; color: var(--text-muted); transition: color 0.25s; }
+  .rstep.active .rstep-num { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 0 12px var(--accent-glow); }
+  .rstep.active .rstep-label { color: var(--text); }
+  .rstep.done .rstep-num { background: var(--promotor-bg); border-color: var(--promotor); color: var(--promotor); }
+  .rstep.done .rstep-label { color: var(--promotor); }
+  .rstep-line { width: 32px; height: 1px; background: var(--border2); }
+
+  .review-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+  .review-form-col { display: flex; flex-direction: column; gap: 0; }
+  .review-side-col { display: flex; flex-direction: column; position: sticky; top: 80px; }
+
+  .review-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px 24px;
+  }
+  .review-card-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .review-card-title { font-family: var(--font-head); font-weight: 700; font-size: 16px; }
+  .review-step-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--accent); background: var(--accent-glow); padding: 3px 9px; border-radius: 20px;
+    border: 1px solid rgba(79,127,255,0.25);
+  }
+  .review-step-panel { display: none; }
+  .review-step-panel.active { display: block; }
+  .review-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+
+  /* Tipo radio */
+  .tipo-radio { cursor: pointer; }
+  .tipo-radio input { display: none; }
+  .tipo-radio-label {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: var(--radius);
+    border: 1px solid var(--border2); background: var(--surface2);
+    font-size: 13px; font-weight: 500; transition: all 0.2s; cursor: pointer;
+  }
+  .tipo-radio input:checked + .tipo-radio-label {
+    border-color: var(--accent); background: var(--accent-glow); color: var(--accent);
+  }
+  .tipo-icon { font-size: 16px; }
+
+  /* Colab search result */
+  .colab-result {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-radius: var(--radius);
+    background: var(--surface2); border: 1px solid var(--border);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .colab-result:hover { border-color: var(--accent); background: var(--accent-glow); }
+  .colab-result.selected { border-color: var(--promotor); background: var(--promotor-bg); }
+  .colab-result-name { font-weight: 600; font-size: 13px; }
+  .colab-result-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .colab-result-badge { font-size: 10px; }
+
+  /* Selected colab pill */
+  .selected-pill {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: var(--radius);
+    background: var(--promotor-bg); border: 1px solid rgba(34,201,142,0.3);
+  }
+  .selected-pill-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #7b5eff);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 800; font-size: 14px; color: #fff;
+    flex-shrink: 0;
+  }
+  .selected-pill-name { font-weight: 700; font-size: 14px; }
+  .selected-pill-sub { font-size: 12px; color: var(--text-dim); }
+  .selected-pill-remove { margin-left: auto; cursor: pointer; color: var(--text-muted); font-size: 18px; }
+  .selected-pill-remove:hover { color: var(--detractor); }
+
+  /* Divider */
+  .rv-divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 16px 0; color: var(--text-muted); font-size: 12px;
+  }
+  .rv-divider::before, .rv-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* QUESTION CARD */
+  .rv-question {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    transition: border-color 0.2s;
+  }
+  .rv-question.answered { border-color: rgba(79,127,255,0.3); }
+  .rv-question-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .rv-question-num {
+    min-width: 26px; height: 26px; border-radius: 50%;
+    background: var(--surface3); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 800; font-size: 11px; color: var(--text-dim);
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .rv-question.answered .rv-question-num { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .rv-question-text { font-size: 13px; line-height: 1.5; }
+  .rv-question-sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; font-style: italic; }
+  .rv-rating { display: flex; gap: 8px; }
+  .rv-rating-btn {
+    flex: 1; padding: 10px 6px; border-radius: 8px;
+    border: 1px solid var(--border2); background: var(--surface3);
+    cursor: pointer; transition: all 0.15s; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .rv-rating-num { font-family: var(--font-head); font-weight: 800; font-size: 18px; color: var(--text-dim); }
+  .rv-rating-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .rv-rating-btn:hover { border-color: var(--accent); }
+  .rv-rating-btn.rv-active-1 { background: var(--detractor-bg); border-color: var(--detractor); }
+  .rv-rating-btn.rv-active-1 .rv-rating-num { color: var(--detractor); }
+  .rv-rating-btn.rv-active-2 { background: var(--neutro-bg); border-color: var(--neutro); }
+  .rv-rating-btn.rv-active-2 .rv-rating-num { color: var(--neutro); }
+  .rv-rating-btn.rv-active-3 { background: var(--promotor-bg); border-color: var(--promotor); }
+  .rv-rating-btn.rv-active-3 .rv-rating-num { color: var(--promotor); }
+
+  /* Confirm summary */
+  .confirm-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .confirm-row:last-child { border-bottom: none; }
+  .confirm-key { color: var(--text-dim); }
+  .confirm-val { font-weight: 600; }
+  .confirm-score-display {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface2); border-radius: var(--radius); padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .confirm-score-num { font-family: var(--font-head); font-weight: 800; font-size: 36px; }
+
+  /* Context display */
+  .ctx-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--border); }
+  .ctx-row:last-child { border-bottom: none; }
+  .ctx-key { color: var(--text-dim); }
+  .ctx-val { font-weight: 600; text-align: right; }
+
+  /* Session list item */
+  .session-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: var(--radius);
+    background: var(--surface2); border: 1px solid var(--border);
+    margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s;
+  }
+  .session-item:hover { border-color: var(--accent); }
+  .session-item-name { font-size: 12px; font-weight: 600; flex: 1; }
+  .session-item-score { font-family: var(--font-head); font-weight: 800; font-size: 13px; }
+
+  /* Toast notification */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px; z-index: 9999;
+    background: var(--surface); border: 1px solid var(--promotor);
+    border-radius: var(--radius); padding: 14px 20px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(34,201,142,0.2);
+    transform: translateY(80px); opacity: 0;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 360px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast-icon { font-size: 20px; }
+  .toast-text { font-size: 13px; font-weight: 500; }
+  .toast-name { font-weight: 700; color: var(--promotor); }
+
+  /* Score preview */
+  .preview-dim { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
+  .preview-dim-bar { flex: 1; margin: 0 10px; height: 3px; border-radius: 3px; background: var(--surface3); }
+  .preview-dim-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+
+  /* Animations */
+  @keyframes slideIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+  .review-step-panel.active { animation: slideIn 0.25s ease both; }
+
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="topbar-logo">BSG</div>
+      <div>
+        <div class="topbar-title">ADN Evaluador</div>
+        <div class="topbar-sub">Clasificación cultural y de desempeño</div>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" onclick="openImportModal()">⬆ Importar CSV</button>
+      <button class="btn btn-primary" onclick="openAddModal()">+ Nueva evaluación</button>
+    </div>
+  </header>
+
+  <!-- TABS -->
+  <nav class="tabs">
+    <div class="tab active" data-tab="dashboard" onclick="switchTab('dashboard', this)">Dashboard</div>
+    <div class="tab" data-tab="tabla" onclick="switchTab('tabla', this)">Colaboradores</div>
+    <div class="tab" data-tab="nuevos" onclick="switchTab('nuevos', this)">Nuevos Ingresos</div>
+    <div class="tab tab-talent" data-tab="talent" onclick="switchTab('talent', this)">◈ Talent Review</div>
+    <div class="tab" data-tab="configuracion" onclick="switchTab('configuracion', this)">Configuración</div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ========== TAB DASHBOARD ========== -->
+    <div class="tab-panel active" id="tab-dashboard">
+      <!-- Executive summary -->
+      <div class="exec-summary" id="exec-summary"></div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <!-- Charts -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="card-title">Distribución ADN · Nómina total</div>
+          <canvas id="chart-pie"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-title">Nómina Total vs Nuevos Ingresos</div>
+          <canvas id="chart-compare"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-title">Índice de Salud Cultural</div>
+          <canvas id="chart-isc"></canvas>
+        </div>
+        <div class="chart-card wide">
+          <div class="card-title">Distribución por Distrito</div>
+          <canvas id="chart-tienda" style="max-height:280px"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-title">Score promedio por Dimensión</div>
+          <canvas id="chart-dim"></canvas>
+        </div>
+      </div>
+
+
+      <!-- Reselección widget -->
+      <div class="card" id="resel-card" style="margin-bottom:20px">
+        <div class="card-title">🔄 ¿La volverías a seleccionar? · Indicador de calidad de selección</div>
+        <div id="resel-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"></div>
+      </div>
+      <!-- Focos de atención -->
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">⚠ Focos de atención · Tiendas con más detractores</div>
+        <div id="focos-table"></div>
+      </div>
+    </div>
+
+    <!-- ========== TAB COLABORADORES ========== -->
+    <div class="tab-panel" id="tab-tabla">
+      <div class="section-header">
+        <div class="section-title">Colaboradores evaluados</div>
+        <div class="section-sub">Todos los perfiles de la nómina.</div>
+      </div>
+
+      <div class="filters-bar">
+        <div class="filter-group">
+          <span class="filter-label">Buscar</span>
+          <input type="text" class="search-input" placeholder="Nombre o tienda..." id="search-input" oninput="renderTable()">
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Clasificación</span>
+          <select id="filter-clasificacion" onchange="renderTable()">
+            <option value="">Todas</option>
+            <option value="Promotor">Promotor</option>
+            <option value="Neutro">Neutro</option>
+            <option value="Detractor">Detractor</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Tienda</span>
+          <select id="filter-tienda" onchange="renderTable()">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">País</span>
+          <select id="filter-pais" onchange="renderTable()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Tipo</span>
+          <select id="filter-tipo" onchange="renderTable()">
+            <option value="">Todos</option>
+            <option value="nomina">Nómina</option>
+            <option value="nuevo">Nuevo ingreso</option>
+          </select>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="main-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Tienda</th>
+              <th>País</th>
+              <th>Líder</th>
+              <th>Tipo</th>
+              <th>Fit ADN</th>
+              <th>CX</th>
+              <th>Engage</th>
+              <th>Soft</th>
+              <th>Técnico</th>
+              <th>Potencial</th>
+              <th>Score</th>
+              <th>ADN</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== TAB NUEVOS INGRESOS ========== -->
+    <div class="tab-panel" id="tab-nuevos">
+      <div class="section-header">
+        <div class="section-title">Calidad de reclutamiento</div>
+        <div class="section-sub">Colaboradores con fecha de contratación desde Junio 2025 en adelante.</div>
+      </div>
+      <div class="kpi-grid" id="kpi-nuevos"></div>
+      <div class="charts-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="chart-card">
+          <div class="card-title">Distribución ADN · Nuevos Ingresos</div>
+          <canvas id="chart-pie-nuevos"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="card-title">Score promedio por dimensión · Nuevos</div>
+          <canvas id="chart-dim-nuevos"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Detalle de nuevos ingresos</div>
+        <div class="table-wrap" style="margin-top:0">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Nombre</th><th>Tienda</th><th>Score</th><th>ADN</th><th>Fit ADN</th><th>CX</th><th>Engage</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="table-nuevos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== TAB TALENT REVIEW ========== -->
+    <div class="tab-panel" id="tab-talent">
+
+      <!-- HEADER -->
+      <div class="tr-header">
+        <div>
+          <div class="section-title" style="display:flex;align-items:center;gap:10px">
+            <span class="tr-icon-badge">◈</span> Talent Review
+          </div>
+          <div class="section-sub" id="tr-subtitle">Personas identificadas con potencial de crecimiento dentro de BSG.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <div class="tr-pot-toggle">
+            <button class="tr-pot-btn active" id="tr-btn-alto" onclick="trSetPotFilter('alto', this)">
+              <span class="tr-pot-dot alto"></span> Alto potencial
+            </button>
+            <button class="tr-pot-btn" id="tr-btn-medio" onclick="trSetPotFilter('medio', this)">
+              <span class="tr-pot-dot medio"></span> + Medio
+            </button>
+            <button class="tr-pot-btn" id="tr-btn-todos" onclick="trSetPotFilter('todos', this)">
+              Todos
+            </button>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="trExport()">⬇ Exportar</button>
+        </div>
+      </div>
+
+      <!-- AUTO INSIGHTS -->
+      <div class="tr-insights" id="tr-insights"></div>
+
+      <!-- KPI GRID -->
+      <div class="kpi-grid" id="tr-kpis" style="margin-bottom:20px"></div>
+
+      <!-- CHARTS ROW -->
+      <div class="tr-charts-row">
+        <div class="chart-card" style="flex:1">
+          <div class="card-title">ADN × Potencial</div>
+          <canvas id="tr-chart-matrix" style="max-height:200px"></canvas>
+        </div>
+        <div class="chart-card" style="flex:1">
+          <div class="card-title">Potencial por Distrito</div>
+          <canvas id="tr-chart-distrito" style="max-height:200px"></canvas>
+        </div>
+        <div class="chart-card" style="flex:1">
+          <div class="card-title">Score ADN del talento</div>
+          <canvas id="tr-chart-score" style="max-height:200px"></canvas>
+        </div>
+      </div>
+
+      <!-- FILTERS + TABLE -->
+      <div class="filters-bar" style="margin-bottom:16px">
+        <div class="filter-group">
+          <span class="filter-label">Buscar</span>
+          <input type="text" class="search-input" placeholder="Nombre..." id="tr-search" oninput="trRenderTable()">
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">ADN</span>
+          <select id="tr-f-adn" onchange="trRenderTable()">
+            <option value="">Todos</option>
+            <option value="Promotor">Promotor</option>
+            <option value="Neutro">Neutro</option>
+            <option value="Detractor">Detractor</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Distrito</span>
+          <select id="tr-f-distrito" onchange="trRenderTable()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Tienda</span>
+          <select id="tr-f-tienda" onchange="trRenderTable()">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Tipo</span>
+          <select id="tr-f-tipo" onchange="trRenderTable()">
+            <option value="">Todos</option>
+            <option value="nomina">Nómina</option>
+            <option value="nuevo">Nuevo ingreso</option>
+          </select>
+        </div>
+        <div class="spacer"></div>
+        <select id="tr-sort" onchange="trRenderTable()" style="background:var(--surface3);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:13px;outline:none">
+          <option value="pot-desc">Mayor potencial primero</option>
+          <option value="score-desc">Mayor score ADN</option>
+          <option value="nombre-asc">A → Z</option>
+        </select>
+      </div>
+
+      <div class="table-wrap" style="margin-bottom:24px">
+        <table id="tr-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nombre</th>
+              <th>Tienda</th>
+              <th>Distrito</th>
+              <th>Líder</th>
+              <th>Tipo</th>
+              <th>Score ADN</th>
+              <th>ADN</th>
+              <th>Potencial</th>
+              <th>Estado</th>
+              <th>Área de oportunidad</th>
+              <th>Programa sugerido</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tr-tbody"></tbody>
+        </table>
+      </div>
+
+    </div><!-- /tab-talent -->
+
+    <!-- ========== TAB CONFIGURACIÓN ========== -->
+    <div class="tab-panel" id="tab-configuracion">
+      <div class="section-header">
+        <div class="section-title">Configuración del modelo</div>
+        <div class="section-sub">Ajustá ponderaciones, umbrales y reglas de clasificación.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <div class="card-title">Ponderaciones por dimensión</div>
+          <div style="display:flex;flex-direction:column;gap:12px" id="weight-inputs"></div>
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:12px;color:var(--text-dim)" id="weight-total"></div>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="saveWeights()">Guardar ponderaciones</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Umbrales de clasificación</div>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="form-group">
+              <label class="form-label">Promotor ≥</label>
+              <input type="number" step="0.01" id="th-promotor" class="form-input" value="4.0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Neutro ≥</label>
+              <input type="number" step="0.01" id="th-neutro" class="form-input" value="3.0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Regla especial: Fit ADN mínimo</label>
+              <input type="number" step="0.01" id="th-fit" class="form-input" value="3.0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Regla especial: Engage mínimo</label>
+              <input type="number" step="0.01" id="th-engage" class="form-input" value="3.0">
+            </div>
+          </div>
+          <button class="btn btn-primary" style="margin-top:14px" onclick="saveThresholds()">Guardar umbrales</button>
+        </div>
+      </div>
+      <div class="alert alert-info" style="margin-top:20px">
+        ℹ Después de guardar cambios, los scores y clasificaciones se recalculan automáticamente para toda la nómina.
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ===== MODAL AGREGAR/EDITAR ===== -->
+<div class="modal-overlay" id="modal-form">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-form-title">Nueva evaluación</div>
+      <button class="modal-close" onclick="closeModal('modal-form')">✕</button>
+    </div>
+
+    <input type="hidden" id="edit-id">
+
+    <!-- Datos generales -->
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Nombre completo *</label>
+        <input type="text" class="form-input" id="f-nombre" placeholder="Ej. María González">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tienda *</label>
+        <input type="text" class="form-input" id="f-tienda" placeholder="Ej. Palermo Soho">
+      </div>
+      <div class="form-group">
+        <label class="form-label">País</label>
+        <input type="text" class="form-input" id="f-pais" placeholder="Ej. Argentina">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Líder / Gerente</label>
+        <input type="text" class="form-input" id="f-lider" placeholder="Ej. Juan Pérez">
+      </div>
+      <div class="form-group">
+        <label class="form-label">VCD</label>
+        <input type="text" class="form-input" id="f-vcd" placeholder="Ej. Buenos Aires Norte">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Antigüedad</label>
+        <select class="form-input" id="f-antiguedad">
+          <option value="<6m">Menos de 6 meses</option>
+          <option value="6m-1a">6 meses – 1 año</option>
+          <option value="1-3a">1 a 3 años</option>
+          <option value=">3a">Más de 3 años</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo de perfil *</label>
+        <select class="form-input" id="f-tipo">
+          <option value="nomina">Nómina</option>
+          <option value="nuevo">Nuevo ingreso</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Dimensiones -->
+    <div id="dimensiones-form"></div>
+
+    <!-- Campos cualitativos -->
+    <div class="dim-section">
+      <div class="dim-title">Campos cualitativos (no afectan el score)</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Área de oportunidad</label>
+          <input type="text" class="form-input" id="f-oportunidad" placeholder="Ej. Gestión de conflictos">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Programa de formación sugerido</label>
+          <input type="text" class="form-input" id="f-formacion" placeholder="Ej. Liderazgo situacional">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas adicionales</label>
+          <input type="text" class="form-input" id="f-notas" placeholder="Observaciones generales">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-form')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveEvaluacion()">Guardar evaluación</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL IMPORTAR ===== -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Importar datos CSV</div>
+      <button class="modal-close" onclick="closeModal('modal-import')">✕</button>
+    </div>
+    <div class="alert alert-info">
+      ℹ El CSV debe tener las siguientes columnas en orden:<br>
+      <code style="font-size:11px">nombre, tienda, pais, lider, vcd, antiguedad, tipo, fit_adn_1..4, cx_1..3, engage_1..2, soft_1..3, tecnico_1..3, potencial_1, oportunidad, formacion, notas</code>
+    </div>
+    <div class="import-area" onclick="document.getElementById('csv-file').click()">
+      <div class="import-icon">📂</div>
+      <div class="import-text">Hacé clic para seleccionar un archivo CSV</div>
+      <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="handleFileImport(this)">
+    </div>
+    <div style="margin:16px 0;text-align:center;color:var(--text-dim);font-size:12px">— o pegá el CSV acá —</div>
+    <textarea class="csv-input" id="csv-paste" placeholder="nombre,tienda,pais,...&#10;María González,Palermo,Argentina,..."></textarea>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-import')">Cancelar</button>
+      <button class="btn btn-primary" onclick="processCSV()">Importar datos</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DETALLE ===== -->
+<div class="modal-overlay" id="modal-detalle">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="detalle-nombre"></div>
+      <button class="modal-close" onclick="closeModal('modal-detalle')">✕</button>
+    </div>
+    <div id="detalle-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-detalle')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATA MODEL & INITIAL CONFIG
+   ============================================================ */
+
+// Shared helper: converts "DISTRITO 05 (CL_D05)" → "Distrito 5"
+// TO CHANGE format: edit this single function.
+function cleanDistrito(vcd) {
+  if (!vcd) return 'Sin distrito';
+  const m = vcd.match(/[A-Z]{2}_D(\d+)/);
+  if (m) return 'Distrito ' + parseInt(m[1]);
+  return vcd.replace(/\(.*?\)/g, '').trim() || vcd;
+}
+
+// Dimensiones con sus preguntas
+const DIMENSIONES = [
+  {
+    key: 'fit_adn',
+    label: 'Fit ADN',
+    preguntas: [
+      'Alineación con el ADN de la marca (espontaneidad, alegría, empatía)',
+      'Imagen personal alineada con estándares de la marca',
+    ]
+  },
+  {
+    key: 'cx',
+    label: 'Customer Experience',
+    preguntas: [
+      'Experiencia que genera en el cliente (modelo SSS)',
+    ]
+  },
+  {
+    key: 'engage',
+    label: 'Engagement y Cultura',
+    preguntas: [
+      'Refleja y promueve los valores de la compañía en su día a día',
+    ]
+  },
+  {
+    key: 'soft',
+    label: 'Soft Skills',
+    preguntas: [
+      'Comunicación, trabajo en equipo y adaptación al cambio',
+    ]
+  },
+  {
+    key: 'tecnico',
+    label: 'Gestión del Negocio',
+    preguntas: [
+      'Desempeño en tienda (producto, VM, indicadores, procesos)',
+    ]
+  },
+  {
+    key: 'potencial',
+    label: 'Potencial y Desarrollo',
+    preguntas: [
+      'Potencial de crecimiento y desarrollo dentro de la compañía',
+    ]
+  },
+];
+
+// Configuración de ponderaciones (editable)
+let CONFIG = {
+  pesos: {
+    fit_adn: 0.30,
+    cx: 0.20,
+    engage: 0.20,
+    soft: 0.10,
+    tecnico: 0.10,
+    potencial: 0.10,
+  },
+  umbrales: {
+    promotor: 4.0,   // escala 1-5
+    neutro: 3.0,     // escala 1-5
+    fit_min: 3.0,    // regla especial fit ADN mínimo
+    engage_min: 3.0, // regla especial engage mínimo
+  }
+};
+
+// Datos mock de ejemplo
+let DATA = [{"id":1,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-SAN ISIDRO 2","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[1,3],"tecnico":[4],"soft":[4],"cx":[3],"engage":[3],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":2,"nombre":"ORIANA DIAZ","tienda":"IS-BAHIA BLANCA 1","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[2,2],"tecnico":[1],"soft":[1],"cx":[2],"engage":[1],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":3,"nombre":"ORIANA DIAZ","tienda":"IS-TANDIL","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[3,3],"tecnico":[4],"soft":[5],"cx":[3],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":4,"nombre":"ORIANA DIAZ","tienda":"IS-TRELEW","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[3,3],"tecnico":[3],"soft":[1],"cx":[2],"engage":[1],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":5,"nombre":"ORIANA DIAZ","tienda":"IS-BAHIA BLANCA 1","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[4,4],"tecnico":[4],"soft":[5],"cx":[4],"engage":[3],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":6,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-SAN ISIDRO 2","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[2,3],"tecnico":[3],"soft":[2],"cx":[2],"engage":[2],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":7,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-SAN ISIDRO 2","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Sales Experience Assistant","scores":{"fit_adn":[1,1],"tecnico":[2],"soft":[2],"cx":[1],"engage":[2],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":8,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-MARTINEZ","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[3,4],"tecnico":[3],"soft":[4],"cx":[4],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":9,"nombre":"ORIANA DIAZ","tienda":"IS-MAR DEL PLATA 3","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[4,5],"tecnico":[3],"soft":[5],"cx":[4],"engage":[5],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":10,"nombre":"ORIANA DIAZ","tienda":"IS-USHUAIA","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[4,5],"tecnico":[3],"soft":[5],"cx":[4],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":11,"nombre":"ORIANA DIAZ","tienda":"IS-MAR DEL PLATA 4","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[5,4],"tecnico":[3],"soft":[5],"cx":[5],"engage":[5],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":12,"nombre":"ORIANA DIAZ","tienda":"IS-MAR DEL PLATA 3","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[5,5],"tecnico":[5],"soft":[5],"cx":[5],"engage":[5],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":13,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-OLIVOS","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[4,4],"tecnico":[4],"soft":[4],"cx":[3],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":14,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-CABILDO 2","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[2,4],"tecnico":[3],"soft":[3],"cx":[4],"engage":[3],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":15,"nombre":"ORIANA DIAZ","tienda":"IS-USHUAIA","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[2,2],"tecnico":[3],"soft":[4],"cx":[3],"engage":[3],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":16,"nombre":"ORIANA DIAZ","tienda":"IS-BAHIA BLANCA 2","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[4,4],"tecnico":[3],"soft":[4],"cx":[3],"engage":[5],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":17,"nombre":"ORIANA DIAZ","tienda":"IS-TRELEW","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[3,3],"tecnico":[2],"soft":[2],"cx":[2],"engage":[2],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":18,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER 2","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[3,4],"tecnico":[2],"soft":[2],"cx":[3],"engage":[3],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":19,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-MARTINEZ","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[4,4],"tecnico":[3],"soft":[4],"cx":[4],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":20,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-CABILDO 3","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[4,5],"tecnico":[4],"soft":[3],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":21,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-CABILDO 3","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[1,3],"tecnico":[2],"soft":[2],"cx":[2],"engage":[1],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":22,"nombre":"ORIANA DIAZ","tienda":"IS-COMODORO RIVADAVIA","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[4,4],"tecnico":[2],"soft":[3],"cx":[3],"engage":[3],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"No","potencial_raw":"No"},{"id":23,"nombre":"ORIANA DIAZ","tienda":"IS-MAR DEL PLATA 4","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":">3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[5,5],"tecnico":[4],"soft":[4],"cx":[3],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":24,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-CABILDO","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[4,4],"tecnico":[4],"soft":[3],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":25,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-CABILDO","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[5,4],"tecnico":[4],"soft":[4],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":26,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[5,5],"tecnico":[4],"soft":[4],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":27,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-CABILDO 2","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[3,4],"tecnico":[3],"soft":[3],"cx":[3],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":28,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[4,5],"tecnico":[3],"soft":[3],"cx":[3],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":29,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Sales Experience Assistant","scores":{"fit_adn":[5,5],"tecnico":[4],"soft":[4],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":30,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Sales Experience Assistant","scores":{"fit_adn":[4,4],"tecnico":[4],"soft":[4],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":31,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Sales Experience Assistant","scores":{"fit_adn":[5,4],"tecnico":[3],"soft":[4],"cx":[4],"engage":[5],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":32,"nombre":"ORIANA DIAZ","tienda":"IS-TANDIL","pais":"Argentina","lider":"ar12024663","vcd":"Distrito 18","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Store Experience Manager","scores":{"fit_adn":[5,5],"tecnico":[3],"soft":[4],"cx":[4],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":33,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Sales Experience Assistant","scores":{"fit_adn":[4,4],"tecnico":[4],"soft":[4],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":34,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM - DOT 2","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Instore VM","scores":{"fit_adn":[5,5],"tecnico":[3],"soft":[3],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":35,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"1-3a","tipo":"nomina","rol":"Sales Experience Assistant","scores":{"fit_adn":[5,4],"tecnico":[3],"soft":[4],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":36,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"6m-1a","tipo":"nuevo","rol":"Sales Experience Assistant","scores":{"fit_adn":[5,5],"tecnico":[3],"soft":[4],"cx":[5],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":37,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"6m-1a","tipo":"nuevo","rol":"Sales Experience Assistant","scores":{"fit_adn":[4,4],"tecnico":[3],"soft":[3],"cx":[4],"engage":[3],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":38,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-SAN ISIDRO 2","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"6m-1a","tipo":"nuevo","rol":"Sales Experience Assistant","scores":{"fit_adn":[3,4],"tecnico":[4],"soft":[3],"cx":[4],"engage":[4],"potencial":[1]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"No"},{"id":39,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"6m-1a","tipo":"nuevo","rol":"Sales Experience Assistant","scores":{"fit_adn":[4,4],"tecnico":[4],"soft":[4],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"},{"id":40,"nombre":"ROCIO SABRINA CAFIEL","tienda":"TM-UNICENTER","pais":"Argentina","lider":"ar12024664","vcd":"Distrito 11","region":"Region 3","antiguedad":"6m-1a","tipo":"nuevo","rol":"Sales Experience Assistant","scores":{"fit_adn":[5,5],"tecnico":[3],"soft":[4],"cx":[4],"engage":[4],"potencial":[5]},"oportunidad":"","formacion":"","notas":"","reseleccion":"Sí","potencial_raw":"Sí"}];
+
+let nextId = 41;
+
+/* ============================================================
+   CORE CALCULATION
+   ============================================================ */
+
+function calcScore(scores) {
+  const dims = {};
+  DIMENSIONES.forEach(dim => {
+    const vals = scores[dim.key] || [];
+    dims[dim.key] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+  });
+  
+  // Weighted score
+  let total = 0;
+  Object.keys(CONFIG.pesos).forEach(k => {
+    total += (dims[k] || 0) * CONFIG.pesos[k];
+  });
+  
+  // Classify
+  let clasificacion;
+  const fitOk = dims.fit_adn >= CONFIG.umbrales.fit_min;
+  const engageOk = dims.engage >= CONFIG.umbrales.engage_min;
+  
+  if (total >= CONFIG.umbrales.promotor && fitOk && engageOk) {
+    clasificacion = 'Promotor';
+  } else if (total >= CONFIG.umbrales.neutro) {
+    clasificacion = 'Neutro';
+  } else {
+    clasificacion = 'Detractor';
+  }
+  
+  return { dims, total: Math.round(total * 100) / 100, clasificacion };
+}
+
+function getColaboradorCalc(c) {
+  return calcScore(c.scores);
+}
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+
+let chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function renderAll() {
+  renderDashboard();
+  renderTable();
+  renderNuevos();
+}
+
+function renderDashboard() {
+  const all = DATA.map(c => ({ ...c, calc: getColaboradorCalc(c) }));
+  const nuevos = all.filter(c => c.tipo === 'nuevo');
+
+  const count = all.length;
+  const prom = all.filter(c => c.calc.clasificacion === 'Promotor').length;
+  const neut = all.filter(c => c.calc.clasificacion === 'Neutro').length;
+  const detr = all.filter(c => c.calc.clasificacion === 'Detractor').length;
+  const isc = Math.round(((prom - detr) / count) * 100);
+
+  const promN = nuevos.filter(c => c.calc.clasificacion === 'Promotor').length;
+  const neutN = nuevos.filter(c => c.calc.clasificacion === 'Neutro').length;
+  const detrN = nuevos.filter(c => c.calc.clasificacion === 'Detractor').length;
+
+  // Executive summary
+  const el = document.getElementById('exec-summary');
+  const trend = isc >= 0 ? '📈' : '📉';
+  el.innerHTML = `
+    <div class="exec-title">Resumen Ejecutivo · Evaluación Cultural BSG</div>
+    <div class="exec-main">${count} colaboradores evaluados · ${nuevos.length} nuevos ingresos</div>
+    <div class="exec-detail">
+      El ${Math.round(prom/count*100)}% del equipo clasifica como <strong style="color:var(--promotor)">Promotor ADN</strong>. 
+      La calidad de reclutamiento muestra un ${Math.round(promN/(nuevos.length||1)*100)}% de nuevos ingresos alineados.
+      Se identifican ${detr} perfiles con seguimiento prioritario.
+    </div>
+    <div class="isc-badge">
+      <span class="isc-label">Índice Salud Cultural ${trend}</span>
+      <span class="isc-value" style="color:${isc>=0?'var(--promotor)':'var(--detractor)'}">${isc > 0 ? '+' : ''}${isc}</span>
+    </div>
+  `;
+
+  // KPIs
+  const kpiEl = document.getElementById('kpi-grid');
+  kpiEl.innerHTML = `
+    <div class="kpi blue fade-in"><div class="kpi-label">Total evaluados</div><div class="kpi-value">${count}</div><div class="kpi-sub">${nuevos.length} nuevos ingresos</div></div>
+    <div class="kpi green fade-in"><div class="kpi-label">Promotores</div><div class="kpi-value">${Math.round(prom/count*100)}%</div><div class="kpi-sub">${prom} personas</div></div>
+    <div class="kpi orange fade-in"><div class="kpi-label">Neutros</div><div class="kpi-value">${Math.round(neut/count*100)}%</div><div class="kpi-sub">${neut} personas</div></div>
+    <div class="kpi red fade-in"><div class="kpi-label">Detractores</div><div class="kpi-value">${Math.round(detr/count*100)}%</div><div class="kpi-sub">${detr} personas</div></div>
+    <div class="kpi ${isc>=0?'green':'red'} fade-in"><div class="kpi-label">Índice Salud Cultural</div><div class="kpi-value">${isc>0?'+':''}${isc}</div><div class="kpi-sub">% Promotores − % Detractores</div></div>
+    <div class="kpi blue fade-in"><div class="kpi-label">Nuevos · Promotores</div><div class="kpi-value">${Math.round(promN/(nuevos.length||1)*100)}%</div><div class="kpi-sub">${promN} de ${nuevos.length}</div></div>
+  `;
+
+  // Charts
+  renderPieChart('chart-pie', [prom, neut, detr], 'Nómina total');
+  renderCompareChart(prom, neut, detr, promN, neutN, detrN, count, nuevos.length);
+  renderISCChart(all);
+  renderTiendaChart(all);
+  renderDimChart('chart-dim', all);
+  renderFocos(all);
+  renderReseleccion(all);
+}
+
+function renderPieChart(id, vals, label) {
+  destroyChart(id);
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  chartInstances[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Promotor', 'Neutro', 'Detractor'],
+      datasets: [{ data: vals, backgroundColor: ['#22c98e', '#f5a623', '#ff4f6a'], borderWidth: 0, hoverOffset: 8 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#7a8099', font: { family: 'DM Sans', size: 12 }, padding: 16 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}` } }
+      },
+      cutout: '65%'
+    }
+  });
+}
+
+function renderCompareChart(p, n, d, pN, nN, dN, tot, totN) {
+  destroyChart('chart-compare');
+  const ctx = document.getElementById('chart-compare')?.getContext('2d');
+  if (!ctx) return;
+  chartInstances['chart-compare'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Promotores', 'Neutros', 'Detractores'],
+      datasets: [
+        { label: 'Nómina total', data: [Math.round(p/tot*100), Math.round(n/tot*100), Math.round(d/tot*100)], backgroundColor: ['rgba(34,201,142,0.7)', 'rgba(245,166,35,0.7)', 'rgba(255,79,106,0.7)'], borderRadius: 6 },
+        { label: 'Nuevos ingresos', data: [Math.round(pN/(totN||1)*100), Math.round(nN/(totN||1)*100), Math.round(dN/(totN||1)*100)], backgroundColor: ['rgba(34,201,142,0.3)', 'rgba(245,166,35,0.3)', 'rgba(255,79,106,0.3)'], borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      scales: {
+        x: { ticks: { color: '#7a8099' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#7a8099', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.04)' }, max: 100 }
+      },
+      plugins: { legend: { labels: { color: '#7a8099', font: { family: 'DM Sans', size: 11 } } } }
+    }
+  });
+}
+
+function renderISCChart(all) {
+  destroyChart('chart-isc');
+  const ctx = document.getElementById('chart-isc')?.getContext('2d');
+  if (!ctx) return;
+
+  // Group by distrito
+  const distMap = {};
+  all.forEach(c => {
+    const d = cleanDistrito(c.vcd);
+    if (!distMap[d]) distMap[d] = [];
+    distMap[d].push(c);
+  });
+
+  const distritos = Object.keys(distMap).sort();
+  const iscVals = distritos.map(d => {
+    const g = distMap[d];
+    const p = g.filter(c => c.calc.clasificacion === 'Promotor').length;
+    const det = g.filter(c => c.calc.clasificacion === 'Detractor').length;
+    return Math.round(((p - det) / g.length) * 100);
+  });
+  const colors = iscVals.map(v => v >= 0 ? 'rgba(34,201,142,0.75)' : 'rgba(255,79,106,0.75)');
+
+  chartInstances['chart-isc'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: distritos,
+      datasets: [{ label: 'ISC', data: iscVals, backgroundColor: colors, borderRadius: 6 }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+      scales: {
+        x: { ticks: { color: '#7a8099', callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#a0a8c0', font: { size: 11, family: 'Syne', weight: '600' } }, grid: { display: false } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ISC: ${ctx.raw > 0 ? '+' : ''}${ctx.raw}%` } }
+      }
+    }
+  });
+}
+
+function renderTiendaChart(all) {
+  destroyChart('chart-tienda');
+  const ctx = document.getElementById('chart-tienda')?.getContext('2d');
+  if (!ctx) return;
+
+  // Build sorted district list
+  const distritoMap = {};
+  all.forEach(c => {
+    const d = cleanDistrito(c.vcd);
+    if (!distritoMap[d]) distritoMap[d] = { promotor: 0, neutro: 0, detractor: 0, total: 0 };
+    distritoMap[d][c.calc.clasificacion.toLowerCase()]++;
+    distritoMap[d].total++;
+  });
+
+  const distritos = Object.keys(distritoMap).sort();
+  const pData = distritos.map(d => distritoMap[d].promotor);
+  const nData = distritos.map(d => distritoMap[d].neutro);
+  const dData = distritos.map(d => distritoMap[d].detractor);
+  const totals = distritos.map(d => distritoMap[d].total);
+
+  chartInstances['chart-tienda'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: distritos,
+      datasets: [
+        { label: 'Promotor',   data: pData, backgroundColor: 'rgba(34,201,142,0.85)',  borderRadius: 5, stack: 'a' },
+        { label: 'Neutro',     data: nData, backgroundColor: 'rgba(245,166,35,0.85)',  borderRadius: 5, stack: 'a' },
+        { label: 'Detractor',  data: dData, backgroundColor: 'rgba(255,79,106,0.85)',  borderRadius: 5, stack: 'a' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: {
+          stacked: true,
+          ticks: { color: '#a0a8c0', font: { size: 12, family: 'Syne', weight: '600' } },
+          grid: { display: false }
+        },
+        y: {
+          stacked: true,
+          ticks: { color: '#7a8099', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      },
+      plugins: {
+        legend: { labels: { color: '#7a8099', font: { family: 'DM Sans', size: 12 }, padding: 20 } },
+        tooltip: {
+          callbacks: {
+            afterBody: (items) => {
+              const idx = items[0].dataIndex;
+              const total = totals[idx];
+              const p = pData[idx]; const n = nData[idx]; const d = dData[idx];
+              return [
+                `Total: ${total}`,
+                `ISC: ${Math.round(((p - d) / total) * 100)}%`
+              ];
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderDimChart(id, all) {
+  destroyChart(id);
+  const ctx = document.getElementById(id)?.getContext('2d');
+  if (!ctx) return;
+  const labels = DIMENSIONES.map(d => d.label);
+  const avg = DIMENSIONES.map(dim => {
+    const vals = all.map(c => {
+      const s = c.scores?.[dim.key] || (c.calc?.dims?.[dim.key] !== undefined ? [c.calc.dims[dim.key]] : []);
+      if (Array.isArray(s) && s.length) return s.reduce((a,b)=>a+b,0)/s.length;
+      return c.calc?.dims?.[dim.key] || 0;
+    });
+    return Math.round((vals.reduce((a,b)=>a+b,0)/vals.length)*100)/100;
+  });
+  chartInstances[id] = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [{ label: 'Promedio', data: avg, backgroundColor: 'rgba(79,127,255,0.15)', borderColor: '#4f7fff', pointBackgroundColor: '#4f7fff', pointRadius: 4, borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      scales: { r: { min: 0, max: 5, ticks: { stepSize: 1, color: '#7a8099', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.07)' }, pointLabels: { color: '#7a8099', font: { size: 11 } } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+
+function renderReseleccion(all) {
+  const si = all.filter(c => c.reseleccion === 'Sí').length;
+  const no = all.filter(c => c.reseleccion === 'No').length;
+  const total = all.length;
+  const pct = Math.round((si / total) * 100);
+  const color = pct >= 75 ? 'var(--promotor)' : pct >= 50 ? 'var(--neutro)' : 'var(--detractor)';
+  const label = pct >= 75 ? 'Alta calidad de selección' : pct >= 50 ? 'Calidad moderada' : 'Revisar proceso de selección';
+
+  const el = document.getElementById('resel-body');
+  if (!el) return;
+
+  // Gauge-style large number
+  el.innerHTML = \`
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 24px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border);min-width:160px">
+      <div>
+        <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Recontratarían</div>
+        <div style="font-family:var(--font-head);font-weight:800;font-size:42px;color:\${color};line-height:1">\${pct}%</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-top:4px">\${si} de \${total} perfiles</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:200px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="flex:1;height:12px;border-radius:6px;background:var(--surface3);overflow:hidden">
+          <div style="height:100%;width:\${pct}%;background:\${color};border-radius:6px;transition:width 0.5s ease"></div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:\${color);\${pct}%</span>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--promotor)"></div>
+          <span style="color:var(--text-dim)">Sí · </span><strong>\${si}</strong>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px">
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--detractor)"></div>
+          <span style="color:var(--text-dim)">No · </span><strong>\${no}</strong>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:12px;padding:6px 12px;border-radius:8px;background:var(--surface3);color:\${color};font-weight:600;display:inline-block">\${label}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;min-width:200px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:4px">Por clasificación ADN</div>
+      \${['Promotor','Neutro','Detractor'].map(cls => {
+        const g = all.filter(c => c.calc.clasificacion === cls);
+        const gSi = g.filter(c => c.reseleccion === 'Sí').length;
+        const gPct = g.length ? Math.round(gSi/g.length*100) : 0;
+        const badgeCls = cls === 'Promotor' ? 'var(--promotor)' : cls === 'Neutro' ? 'var(--neutro)' : 'var(--detractor)';
+        return \`<div style="display:flex;align-items:center;gap:8px;font-size:12px">
+          <span style="color:\${badgeCls};font-weight:700;width:70px">\${cls}</span>
+          <div style="flex:1;height:6px;border-radius:3px;background:var(--surface3)"><div style="height:100%;width:\${gPct}%;background:\${badgeCls};border-radius:3px"></div></div>
+          <span style="font-weight:700;color:\${badgeCls};width:32px;text-align:right">\${gPct}%</span>
+        </div>\`;
+      }).join('')}
+    </div>
+  \`;
+}
+
+function renderFocos(all) {
+  const distMap = {};
+  all.forEach(c => {
+    const d = cleanDistrito(c.vcd);
+    if (!distMap[d]) distMap[d] = [];
+    distMap[d].push(c);
+  });
+
+  const rows = Object.entries(distMap).map(([distrito, g]) => {
+    const det = g.filter(c => c.calc.clasificacion === 'Detractor').length;
+    const prom = g.filter(c => c.calc.clasificacion === 'Promotor').length;
+    const isc = Math.round(((prom - det) / g.length) * 100);
+    return { distrito, total: g.length, detractores: det, promotores: prom, isc };
+  }).sort((a, b) => b.detractores - a.detractores).slice(0, 7);
+
+  const el = document.getElementById('focos-table');
+  if (!rows.length) { el.innerHTML = '<p style="color:var(--text-dim);font-size:13px">Sin datos.</p>'; return; }
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr>
+      <th style="padding:10px;text-align:left;color:var(--text-dim);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border)">Distrito</th>
+      <th style="padding:10px;text-align:center;color:var(--text-dim);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border)">Total</th>
+      <th style="padding:10px;text-align:center;color:var(--detractor);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border)">Detractores</th>
+      <th style="padding:10px;text-align:center;color:var(--promotor);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border)">Promotores</th>
+      <th style="padding:10px;text-align:center;color:var(--text-dim);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border)">ISC</th>
+      <th style="padding:10px;text-align:left;color:var(--text-dim);font-size:11px;text-transform:uppercase;border-bottom:1px solid var(--border)">Alerta</th>
+    </tr></thead>
+    <tbody>${rows.map((r,i) => `<tr>
+      <td style="padding:10px;border-bottom:1px solid var(--border)"><span class="rank-badge">${i+1}</span> <strong>${r.distrito}</strong></td>
+      <td style="padding:10px;text-align:center;border-bottom:1px solid var(--border)">${r.total}</td>
+      <td style="padding:10px;text-align:center;border-bottom:1px solid var(--border);color:var(--detractor);font-weight:700">${r.detractores}</td>
+      <td style="padding:10px;text-align:center;border-bottom:1px solid var(--border);color:var(--promotor);font-weight:700">${r.promotores}</td>
+      <td style="padding:10px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:${r.isc>=0?'var(--promotor)':'var(--detractor)'}">${r.isc>0?'+':''}${r.isc}%</td>
+      <td style="padding:10px;border-bottom:1px solid var(--border)">${r.detractores > 0 ? `<span style="color:var(--detractor);font-size:11px">⚠ ${r.detractores} perfil${r.detractores>1?'es':''} en riesgo</span>` : `<span style="color:var(--promotor);font-size:11px">✓ Sin alertas</span>`}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function getFilteredData() {
+  const search = document.getElementById('search-input')?.value.toLowerCase() || '';
+  const clas = document.getElementById('filter-clasificacion')?.value || '';
+  const tienda = document.getElementById('filter-tienda')?.value || '';
+  const pais = document.getElementById('filter-pais')?.value || '';
+  const tipo = document.getElementById('filter-tipo')?.value || '';
+  return DATA.map(c => ({ ...c, calc: getColaboradorCalc(c) })).filter(c => {
+    if (search && !c.nombre.toLowerCase().includes(search) && !c.tienda.toLowerCase().includes(search)) return false;
+    if (clas && c.calc.clasificacion !== clas) return false;
+    if (tienda && c.tienda !== tienda) return false;
+    if (pais && c.pais !== pais) return false;
+    if (tipo && c.tipo !== tipo) return false;
+    return true;
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  const filtered = getFilteredData();
+  
+  tbody.innerHTML = filtered.length ? filtered.map((c, i) => {
+    const { dims, total, clasificacion } = c.calc;
+    const badgeCls = clasificacion === 'Promotor' ? 'badge-promotor' : clasificacion === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+    const scoreColor = clasificacion === 'Promotor' ? 'var(--promotor)' : clasificacion === 'Neutro' ? 'var(--neutro)' : 'var(--detractor)';
+    return `<tr>
+      <td style="color:var(--text-muted)">${i+1}</td>
+      <td><strong>${c.nombre}</strong></td>
+      <td>${c.tienda}</td>
+      <td>${c.pais}</td>
+      <td style="color:var(--text-dim)">${c.lider || '—'}</td>
+      <td>${c.tipo === 'nuevo' ? '<span class="badge badge-nuevo"><span class="dot"></span>Nuevo</span>' : '<span style="color:var(--text-dim);font-size:12px">Nómina</span>'}</td>
+      <td>${dimBar(dims.fit_adn)}</td>
+      <td>${dimBar(dims.cx)}</td>
+      <td>${dimBar(dims.engage)}</td>
+      <td>${dimBar(dims.soft)}</td>
+      <td>${dimBar(dims.tecnico)}</td>
+      <td>${dimBar(dims.potencial)}</td>
+      <td class="score-cell" style="color:${scoreColor}">${total.toFixed(2)}</td>
+      <td><span class="badge ${badgeCls}"><span class="dot"></span>${clasificacion}</span></td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="openDetalle(${c.id})">Ver</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEdit(${c.id})">✏</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteColaborador(${c.id})">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="15" style="text-align:center;padding:40px;color:var(--text-muted)">Sin resultados con los filtros actuales.</td></tr>`;
+  
+  // Update filter selects
+  updateFilterSelects();
+}
+
+function dimBar(val) {
+  const pct = Math.round((val / 5) * 100);
+  const color = val >= 4 ? 'var(--promotor)' : val >= 3 ? 'var(--neutro)' : 'var(--detractor)';
+  return `<div style="min-width:60px"><span style="font-size:12px;font-weight:600;color:${color}">${val.toFixed(1)}</span><div class="score-bar"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div></div>`;
+}
+
+function updateFilterSelects() {
+  const tiendas = [...new Set(DATA.map(c => c.tienda))].sort();
+  const paises = [...new Set(DATA.map(c => c.pais))].sort();
+  const tEl = document.getElementById('filter-tienda');
+  const pEl = document.getElementById('filter-pais');
+  const curT = tEl.value; const curP = pEl.value;
+  tEl.innerHTML = '<option value="">Todas</option>' + tiendas.map(t => `<option value="${t}"${t===curT?' selected':''}>${t}</option>`).join('');
+  pEl.innerHTML = '<option value="">Todos</option>' + paises.map(p => `<option value="${p}"${p===curP?' selected':''}>${p}</option>`).join('');
+}
+
+function renderNuevos() {
+  const nuevos = DATA.map(c => ({ ...c, calc: getColaboradorCalc(c) })).filter(c => c.tipo === 'nuevo');
+  const prom = nuevos.filter(c => c.calc.clasificacion === 'Promotor').length;
+  const neut = nuevos.filter(c => c.calc.clasificacion === 'Neutro').length;
+  const detr = nuevos.filter(c => c.calc.clasificacion === 'Detractor').length;
+  const tot = nuevos.length || 1;
+
+  document.getElementById('kpi-nuevos').innerHTML = `
+    <div class="kpi blue fade-in"><div class="kpi-label">Total nuevos</div><div class="kpi-value">${nuevos.length}</div></div>
+    <div class="kpi green fade-in"><div class="kpi-label">Promotores</div><div class="kpi-value">${Math.round(prom/tot*100)}%</div><div class="kpi-sub">${prom} personas</div></div>
+    <div class="kpi orange fade-in"><div class="kpi-label">Neutros</div><div class="kpi-value">${Math.round(neut/tot*100)}%</div><div class="kpi-sub">${neut} personas</div></div>
+    <div class="kpi red fade-in"><div class="kpi-label">Detractores</div><div class="kpi-value">${Math.round(detr/tot*100)}%</div><div class="kpi-sub">${detr} personas</div></div>
+  `;
+
+  renderPieChart('chart-pie-nuevos', [prom, neut, detr], 'Nuevos ingresos');
+  renderDimChart('chart-dim-nuevos', nuevos);
+
+  const tbody = document.getElementById('table-nuevos');
+  tbody.innerHTML = nuevos.map((c, i) => {
+    const { dims, total, clasificacion } = c.calc;
+    const badgeCls = clasificacion === 'Promotor' ? 'badge-promotor' : clasificacion === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${c.nombre}</strong></td>
+      <td>${c.tienda}</td>
+      <td style="font-weight:700;color:${clasificacion==='Promotor'?'var(--promotor)':clasificacion==='Neutro'?'var(--neutro)':'var(--detractor)'}">${total.toFixed(2)}</td>
+      <td><span class="badge ${badgeCls}"><span class="dot"></span>${clasificacion}</span></td>
+      <td>${dimBar(dims.fit_adn)}</td>
+      <td>${dimBar(dims.cx)}</td>
+      <td>${dimBar(dims.engage)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openDetalle(${c.id})">Ver detalle</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--text-muted)">Sin nuevos ingresos registrados.</td></tr>';
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+
+function buildDimensionesForm(data) {
+  const el = document.getElementById('dimensiones-form');
+  el.innerHTML = DIMENSIONES.map(dim => {
+    const peso = Math.round(CONFIG.pesos[dim.key] * 100);
+    const preguntas = dim.preguntas.map((q, qi) => {
+      const val = data?.scores?.[dim.key]?.[qi] || 0;
+      return `<div class="question-row">
+        <div class="question-text">${q}</div>
+        <div class="rating-group">
+          ${[1,2,3,4,5].map(n => `<button type="button" class="rating-btn ${val===n?`active-${n>3?3:n}`:''}" onclick="setRating('${dim.key}',${qi},${n},this)">${n}</button>`).join('')}
+          <span class="rating-label">${['','Bajo','Medio','Alto'][data?.scores?.[dim.key]?.[qi]||0] || ''}</span>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="dim-section">
+      <div class="dim-title">${dim.label} <span class="dim-weight">${peso}%</span></div>
+      <div class="questions-grid">${preguntas}</div>
+    </div>`;
+  }).join('');
+}
+
+function setRating(dimKey, qi, val, btn) {
+  // Update buttons in the group
+  const group = btn.closest('.question-row').querySelectorAll('.rating-btn');
+  group.forEach(b => b.className = 'rating-btn');
+  btn.className = `rating-btn active-${val}`;
+  const label = btn.closest('.question-row').querySelector('.rating-label');
+  label.textContent = ['', 'Bajo', 'Medio', 'Alto'][val];
+}
+
+function getFormScores() {
+  const scores = {};
+  DIMENSIONES.forEach(dim => {
+    const qs = document.querySelectorAll(`[data-dim="${dim.key}"]`);
+    // Get from active buttons in each question row
+    scores[dim.key] = dim.preguntas.map((_, qi) => {
+      const row = document.querySelectorAll(`#dimensiones-form .dim-section`);
+      for (const sec of row) {
+        const title = sec.querySelector('.dim-title');
+        if (title && title.textContent.includes(dim.label)) {
+          const qRows = sec.querySelectorAll('.question-row');
+          if (qRows[qi]) {
+            const active = qRows[qi].querySelector('.rating-btn[class*="active-"]');
+            if (active) return parseInt(active.textContent);
+          }
+        }
+      }
+      return 0;
+    });
+  });
+  return scores;
+}
+
+function openAddModal() {
+  document.getElementById('edit-id').value = '';
+  document.getElementById('modal-form-title').textContent = 'Nueva evaluación';
+  document.getElementById('f-nombre').value = '';
+  document.getElementById('f-tienda').value = '';
+  document.getElementById('f-pais').value = '';
+  document.getElementById('f-lider').value = '';
+  document.getElementById('f-vcd').value = '';
+  document.getElementById('f-antiguedad').value = '<6m';
+  document.getElementById('f-tipo').value = 'nomina';
+  document.getElementById('f-oportunidad').value = '';
+  document.getElementById('f-formacion').value = '';
+  document.getElementById('f-notas').value = '';
+  buildDimensionesForm(null);
+  openModal('modal-form');
+}
+
+function openEdit(id) {
+  const c = DATA.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('modal-form-title').textContent = 'Editar evaluación';
+  document.getElementById('f-nombre').value = c.nombre;
+  document.getElementById('f-tienda').value = c.tienda;
+  document.getElementById('f-pais').value = c.pais;
+  document.getElementById('f-lider').value = c.lider || '';
+  document.getElementById('f-vcd').value = c.vcd || '';
+  document.getElementById('f-antiguedad').value = c.antiguedad || '<6m';
+  document.getElementById('f-tipo').value = c.tipo;
+  document.getElementById('f-oportunidad').value = c.oportunidad || '';
+  document.getElementById('f-formacion').value = c.formacion || '';
+  document.getElementById('f-notas').value = c.notas || '';
+  buildDimensionesForm(c);
+  openModal('modal-form');
+}
+
+function saveEvaluacion() {
+  const nombre = document.getElementById('f-nombre').value.trim();
+  const tienda = document.getElementById('f-tienda').value.trim();
+  if (!nombre || !tienda) { alert('Nombre y tienda son obligatorios.'); return; }
+  const scores = getFormScores();
+  const obj = {
+    id: parseInt(document.getElementById('edit-id').value) || nextId++,
+    nombre, tienda,
+    pais: document.getElementById('f-pais').value.trim(),
+    lider: document.getElementById('f-lider').value.trim(),
+    vcd: document.getElementById('f-vcd').value.trim(),
+    antiguedad: document.getElementById('f-antiguedad').value,
+    tipo: document.getElementById('f-tipo').value,
+    scores,
+    oportunidad: document.getElementById('f-oportunidad').value.trim(),
+    formacion: document.getElementById('f-formacion').value.trim(),
+    notas: document.getElementById('f-notas').value.trim(),
+  };
+  const idx = DATA.findIndex(x => x.id === obj.id);
+  if (idx >= 0) DATA[idx] = obj; else DATA.push(obj);
+  closeModal('modal-form');
+  renderAll();
+}
+
+function deleteColaborador(id) {
+  if (!confirm('¿Eliminar esta evaluación?')) return;
+  DATA = DATA.filter(x => x.id !== id);
+  renderAll();
+}
+
+function openDetalle(id) {
+  const c = DATA.find(x => x.id === id);
+  if (!c) return;
+  const calc = getColaboradorCalc(c);
+  document.getElementById('detalle-nombre').textContent = c.nombre;
+  const badgeCls = calc.clasificacion === 'Promotor' ? 'badge-promotor' : calc.clasificacion === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+  document.getElementById('detalle-body').innerHTML = `
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap">
+      <span class="badge ${badgeCls}" style="font-size:13px;padding:6px 14px"><span class="dot"></span>${calc.clasificacion}</span>
+      <span style="font-family:var(--font-head);font-size:28px;font-weight:800">${calc.total.toFixed(2)}</span>
+      <span style="color:var(--text-dim);font-size:13px">/ 5.00 · ${c.tienda} · ${c.pais}</span>
+      ${c.tipo === 'nuevo' ? '<span class="badge badge-nuevo">Nuevo ingreso</span>' : ''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+      ${DIMENSIONES.map(dim => {
+        const score = calc.dims[dim.key] || 0;
+        const pct = Math.round((score/3)*100);
+        const color = score >= 4 ? 'var(--promotor)' : score >= 3 ? 'var(--neutro)' : 'var(--detractor)';
+        const peso = Math.round(CONFIG.pesos[dim.key]*100);
+        return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim)">${dim.label}</span>
+            <span style="font-size:10px;color:var(--accent)">${peso}%</span>
+          </div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:800;color:${color}">${score.toFixed(2)}</div>
+          <div class="score-bar" style="margin-top:8px"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+          <div style="margin-top:10px;font-size:11px;color:var(--text-muted)">
+            ${dim.preguntas.map((q,qi) => {
+              const v = c.scores?.[dim.key]?.[qi] || 0;
+              const labels = ['', 'Bajo', 'Medio', 'Alto'];
+              const colors = ['', 'var(--detractor)', 'var(--neutro)', 'var(--promotor)'];
+              return `<div style="margin-top:4px;display:flex;justify-content:space-between;gap:8px"><span style="flex:1;line-height:1.3">${q}</span><span style="font-weight:700;color:${colors[v]};white-space:nowrap">${labels[v]||'—'} (${v})</span></div>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    ${c.oportunidad || c.formacion || c.notas ? `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-bottom:10px">Observaciones</div>
+      ${c.oportunidad ? `<div style="margin-bottom:6px"><span style="color:var(--text-dim);font-size:11px">Área de oportunidad: </span>${c.oportunidad}</div>` : ''}
+      ${c.formacion ? `<div style="margin-bottom:6px"><span style="color:var(--text-dim);font-size:11px">Formación sugerida: </span>${c.formacion}</div>` : ''}
+      ${c.notas ? `<div><span style="color:var(--text-dim);font-size:11px">Notas: </span>${c.notas}</div>` : ''}
+    </div>` : ''}
+  `;
+  openModal('modal-detalle');
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function openImportModal() { openModal('modal-import'); }
+
+/* ============================================================
+   TAB SWITCHING
+   ============================================================ */
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  // Re-render charts for tabs with charts
+  setTimeout(() => {
+    if (tab === 'dashboard') renderDashboard();
+    if (tab === 'nuevos') renderNuevos();
+    if (tab === 'talent') renderTalent();
+    
+  }, 50);
+}
+
+/* ============================================================
+   IMPORT CSV
+   ============================================================ */
+
+function handleFileImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('csv-paste').value = e.target.result; };
+  reader.readAsText(file);
+}
+
+function processCSV() {
+  const raw = document.getElementById('csv-paste').value.trim();
+  if (!raw) { alert('No hay datos para importar.'); return; }
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g,''));
+  let imported = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',').map(v => v.trim().replace(/"/g,''));
+    const row = {};
+    header.forEach((h, idx) => row[h] = vals[idx] || '');
+    
+    const scores = {};
+    DIMENSIONES.forEach(dim => {
+      scores[dim.key] = dim.preguntas.map((_, qi) => {
+        const key = `${dim.key}_${qi+1}`;
+        return parseInt(row[key]) || 0;
+      });
+    });
+    
+    DATA.push({
+      id: nextId++,
+      nombre: row.nombre || `Colaborador ${nextId}`,
+      tienda: row.tienda || '',
+      pais: row.pais || '',
+      lider: row.lider || '',
+      vcd: row.vcd || '',
+      antiguedad: row.antiguedad || '<6m',
+      tipo: row.tipo === 'nuevo' ? 'nuevo' : 'nomina',
+      scores,
+      oportunidad: row.oportunidad || '',
+      formacion: row.formacion || '',
+      notas: row.notas || '',
+    });
+    imported++;
+  }
+  closeModal('modal-import');
+  document.getElementById('csv-paste').value = '';
+  renderAll();
+  alert(`✓ ${imported} colaboradores importados correctamente.`);
+}
+
+/* ============================================================
+   EXPORT CSV
+   ============================================================ */
+
+function exportCSV() {
+  const headers = ['nombre','tienda','pais','lider','vcd','antiguedad','tipo','score_total','clasificacion',
+    ...DIMENSIONES.map(d => d.key + '_avg'),
+    'oportunidad','formacion','notas'
+  ];
+  const rows = DATA.map(c => {
+    const calc = getColaboradorCalc(c);
+    return [
+      c.nombre, c.tienda, c.pais, c.lider, c.vcd, c.antiguedad, c.tipo,
+      calc.total.toFixed(2), calc.clasificacion,
+      ...DIMENSIONES.map(d => calc.dims[d.key].toFixed(2)),
+      c.oportunidad || '', c.formacion || '', c.notas || ''
+    ].map(v => `"${v}"`).join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ADN_Evaluacion_BSG.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   REVIEW TAB — EVALUACIÓN DE EQUIPOS
+   ============================================================ */
+
+/**
+ * REVIEW_QUESTIONS: Las 6 preguntas simplificadas del formulario de líderes.
+ * Para modificar preguntas, editá este array.
+ * Cada pregunta mapea a una o más dimensiones del modelo principal (dimKeys).
+ * El peso relativo de cada pregunta dentro de la dimensión se define en weight.
+ *
+ * dimKeys: qué dimensión(es) del modelo principal alimenta esta pregunta.
+ *   fit_adn, cx, engage, soft, tecnico, potencial
+ */
+const REVIEW_QUESTIONS = [
+  {
+    id: 'q1',
+    label: 'Imagen de marca',
+    text: '¿En qué medida su imagen, estilo y presencia están alineados con la identidad y estándares de la marca?',
+    dimKeys: ['fit_adn'],    // mapea a Fit ADN
+    icon: '✦'
+  },
+  {
+    id: 'q2',
+    label: 'Actitud comercial',
+    text: '¿Qué tan espontánea, extrovertida y proactiva es al interactuar y abordar a los clientes?',
+    dimKeys: ['fit_adn', 'soft'],  // aporta a Fit ADN y Soft Skills
+    icon: '◈'
+  },
+  {
+    id: 'q3',
+    label: 'Gestión y resultados',
+    text: '¿Qué tan efectiva es en la gestión integral de la tienda y sus resultados?',
+    dimKeys: ['tecnico'],
+    icon: '◉'
+  },
+  {
+    id: 'q4',
+    label: 'Experiencia de cliente',
+    text: '¿Qué tan bien genera experiencias positivas y resuelve situaciones en tienda?',
+    dimKeys: ['cx'],
+    icon: '◐'
+  },
+  {
+    id: 'q5',
+    label: 'Cultura BSG',
+    text: '¿En qué medida refleja la cultura y valores BSG en su día a día?',
+    dimKeys: ['engage'],
+    icon: '◆'
+  },
+  {
+    id: 'q6',
+    label: 'Potencial',
+    text: '¿Qué potencial tiene para crecer dentro de BSG y asumir mayores desafíos?',
+    dimKeys: ['potencial'],
+    icon: '◇'
+  },
+];
+
+// State for the review tab
+let RV = {
+  step: 1,
+  context: { pais: '', tienda: '', lider: '', vcd: '', tipo: 'nomina' },
+  selectedColab: null,      // { id, nombre, tienda, isNew, antiguedad }
+  answers: {},              // { q1: 2, q2: 3, ... }
+  sessionEvals: [],         // evaluations done in this session
+};
+
+/* ---- STEP NAVIGATION ---- */
+
+function rvGoStep(n) {
+  RV.step = n;
+  document.querySelectorAll('.review-step-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('rstep-' + n).classList.add('active');
+  // Update step indicators
+  document.querySelectorAll('.rstep').forEach(s => {
+    const sn = parseInt(s.dataset.step);
+    s.classList.remove('active', 'done');
+    if (sn === n) s.classList.add('active');
+    else if (sn < n) s.classList.add('done');
+  });
+  // Scroll to top of form
+  document.getElementById('tab-review').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function rvNextStep(from) {
+  if (from === 1) {
+    // Validate context
+    const pais = document.getElementById('rv-pais').value;
+    const tienda = document.getElementById('rv-tienda').value;
+    const lider = document.getElementById('rv-lider').value.trim();
+    if (!pais || !tienda || !lider) {
+      rvShake('rstep-1');
+      return showToast('⚠ Completá País, Tienda y Líder para continuar.', 'warning');
+    }
+    RV.context = {
+      pais, tienda, lider,
+      vcd: document.getElementById('rv-vcd').value.trim(),
+      tipo: document.querySelector('input[name="rv-tipo"]:checked')?.value || 'nomina'
+    };
+    ;
+    rvGoStep(2);
+  } else if (from === 2) {
+    if (!RV.selectedColab) {
+      rvShake('rstep-2');
+      return showToast('⚠ Seleccioná o creá un colaborador para continuar.', 'warning');
+    }
+    rvGoStep(3);
+    rvBuildQuestions();
+  } else if (from === 3) {
+    const unanswered = REVIEW_QUESTIONS.filter(q => !RV.answers[q.id]);
+    if (unanswered.length > 0) {
+      rvShake('rstep-3');
+      return showToast(`⚠ Respondé las ${unanswered.length} pregunta(s) pendiente(s).`, 'warning');
+    }
+    rvBuildConfirm();
+    rvGoStep(4);
+  }
+}
+
+function rvShake(elId) {
+  const el = document.getElementById(elId);
+  el.style.animation = 'none';
+  setTimeout(() => { el.style.animation = ''; }, 10);
+}
+
+/* ---- POPULATE DROPDOWNS ---- */
+
+function rvInitDropdowns() {
+  // Países from DATA
+  const paises = [...new Set(DATA.map(c => c.pais).filter(Boolean))].sort();
+  const paisEl = document.getElementById('rv-pais');
+  paisEl.innerHTML = '<option value="">Seleccioná un país</option>' +
+    paises.map(p => `<option value="${p}">${p}</option>`).join('');
+
+  // Líderes datalist
+  const lideres = [...new Set(DATA.map(c => c.lider).filter(Boolean))].sort();
+  document.getElementById('rv-lider-list').innerHTML = lideres.map(l => `<option value="${l}">`).join('');
+}
+
+function rvUpdateTiendas() {
+  const pais = document.getElementById('rv-pais').value;
+  const tiendas = [...new Set(DATA.filter(c => c.pais === pais).map(c => c.tienda).filter(Boolean))].sort();
+  const el = document.getElementById('rv-tienda');
+  el.innerHTML = '<option value="">Seleccioná una tienda</option>' +
+    tiendas.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
+/* ---- COLLABORATOR SEARCH ---- */
+
+function rvSearchColab(query) {
+  const el = document.getElementById('rv-colab-results');
+  if (!query.trim()) { el.innerHTML = ''; return; }
+  const results = DATA.filter(c => c.nombre.toLowerCase().includes(query.toLowerCase())).slice(0, 8);
+  if (!results.length) {
+    el.innerHTML = `<div style="color:var(--text-muted);font-size:12px;padding:8px">Sin resultados. Podés crear un nuevo colaborador abajo.</div>`;
+    return;
+  }
+  el.innerHTML = results.map(c => {
+    const calc = getColaboradorCalc(c);
+    const badgeCls = calc.clasificacion === 'Promotor' ? 'badge-promotor' : calc.clasificacion === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+    return `<div class="colab-result ${RV.selectedColab?.id === c.id ? 'selected' : ''}" onclick="rvSelectExisting(${c.id})">
+      <div>
+        <div class="colab-result-name">${c.nombre}</div>
+        <div class="colab-result-sub">${c.tienda} · ${c.pais}</div>
+      </div>
+      <span class="badge ${badgeCls} colab-result-badge"><span class="dot"></span>${calc.clasificacion}</span>
+    </div>`;
+  }).join('');
+}
+
+function rvSelectExisting(id) {
+  const c = DATA.find(x => x.id === id);
+  if (!c) return;
+  RV.selectedColab = { id: c.id, nombre: c.nombre, tienda: c.tienda, isNew: false, antiguedad: c.antiguedad };
+  rvShowSelectedPill();
+  document.getElementById('rv-colab-results').innerHTML = '';
+  document.getElementById('rv-buscar-colab').value = '';
+}
+
+function rvSelectNew() {
+  const nombre = document.getElementById('rv-nuevo-nombre').value.trim();
+  if (!nombre) return showToast('⚠ Ingresá el nombre del colaborador.', 'warning');
+  const antig = document.getElementById('rv-nuevo-antig').value.trim() || '<6m';
+  RV.selectedColab = { id: null, nombre, tienda: RV.context.tienda, isNew: true, antiguedad: antig };
+  rvShowSelectedPill();
+}
+
+function rvShowSelectedPill() {
+  const el = document.getElementById('rv-selected-colab');
+  const c = RV.selectedColab;
+  if (!c) { el.style.display = 'none'; return; }
+  const initials = c.nombre.split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+  el.style.display = 'block';
+  el.innerHTML = `<div class="selected-pill">
+    <div class="selected-pill-avatar">${initials}</div>
+    <div>
+      <div class="selected-pill-name">${c.nombre}</div>
+      <div class="selected-pill-sub">${c.isNew ? '🌟 Nuevo colaborador' : `📍 ${c.tienda}`}</div>
+    </div>
+    <span class="selected-pill-remove" onclick="rvClearColab()">✕</span>
+  </div>`;
+}
+
+function rvClearColab() {
+  RV.selectedColab = null;
+  document.getElementById('rv-selected-colab').style.display = 'none';
+}
+
+/* ---- BUILD QUESTIONS FORM ---- */
+
+function rvBuildQuestions() {
+  const el = document.getElementById('rv-questions-list');
+  el.innerHTML = REVIEW_QUESTIONS.map((q, i) => `
+    <div class="rv-question ${RV.answers[q.id] ? 'answered' : ''}" id="rv-q-${q.id}">
+      <div class="rv-question-header">
+        <div class="rv-question-num">${i + 1}</div>
+        <div>
+          <div class="rv-question-text"><strong>${q.label}</strong></div>
+          <div class="rv-question-sub">${q.text}</div>
+        </div>
+      </div>
+      <div class="rv-rating">
+        ${[1,2,3].map(n => `
+          <div class="rv-rating-btn ${RV.answers[q.id] === n ? `rv-active-${n}` : ''}"
+            onclick="rvSetAnswer('${q.id}', ${n}, this)">
+            <span class="rv-rating-num">${n}</span>
+            <span class="rv-rating-label">${['Bajo','Medio','Alto'][n-1]}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  `).join('');
+  rvUpdateProgress();
+}
+
+function rvSetAnswer(qId, val, btn) {
+  RV.answers[qId] = val;
+  // Update button styles in this question
+  const qEl = document.getElementById('rv-q-' + qId);
+  qEl.classList.add('answered');
+  qEl.querySelectorAll('.rv-rating-btn').forEach(b => b.className = 'rv-rating-btn');
+  btn.className = `rv-rating-btn rv-active-${val}`;
+  rvUpdateProgress();
+  rvUpdateScorePreview();
+}
+
+function rvUpdateProgress() {
+  const answered = Object.keys(RV.answers).length;
+  const total = REVIEW_QUESTIONS.length;
+  const pct = Math.round((answered / total) * 100);
+  const bar = document.getElementById('rv-progress-bar');
+  const txt = document.getElementById('rv-progress-text');
+  if (bar) bar.style.width = pct + '%';
+  if (txt) txt.textContent = `${answered} / ${total}`;
+  if (bar) bar.style.background = pct === 100 ? 'var(--promotor)' : 'var(--accent)';
+}
+
+/* ---- SCORE PREVIEW (live, right panel) ---- */
+
+function rvUpdateScorePreview() {
+  const scores = rvMapAnswersToScores();
+  const calc = calcScore(scores);
+  const el = document.getElementById('rv-score-preview');
+  const color = calc.clasificacion === 'Promotor' ? 'var(--promotor)' : calc.clasificacion === 'Neutro' ? 'var(--neutro)' : 'var(--detractor)';
+  const badgeCls = calc.clasificacion === 'Promotor' ? 'badge-promotor' : calc.clasificacion === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+
+  const answered = Object.keys(RV.answers).length;
+  if (answered === 0) {
+    el.innerHTML = `<div style="color:var(--text-muted);font-size:13px">Respondé las preguntas para ver el score.</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <span style="font-family:var(--font-head);font-weight:800;font-size:32px;color:${color}">${calc.total.toFixed(2)}</span>
+      <span class="badge ${badgeCls}" style="font-size:11px"><span class="dot"></span>${calc.clasificacion}</span>
+    </div>
+    ${DIMENSIONES.map(dim => {
+      const score = calc.dims[dim.key] || 0;
+      const pct = Math.round((score/3)*100);
+      const c = score >= 4 ? 'var(--promotor)' : score >= 3 ? 'var(--neutro)' : 'var(--detractor)';
+      return `<div class="preview-dim">
+        <span style="width:80px;color:var(--text-dim)">${dim.label.split(' ')[0]}</span>
+        <div class="preview-dim-bar"><div class="preview-dim-fill" style="width:${pct}%;background:${c}"></div></div>
+        <span style="font-weight:700;color:${c};width:28px;text-align:right">${score.toFixed(1)}</span>
+      </div>`;
+    }).join('')}
+    <div style="font-size:11px;color:var(--text-muted);margin-top:8px">${answered < REVIEW_QUESTIONS.length ? `${REVIEW_QUESTIONS.length - answered} pregunta(s) sin responder · score estimado` : 'Score completo'}</div>
+  `;
+}
+
+/* ---- MAP REVIEW ANSWERS → DIMENSIONES SCORES ---- */
+
+/**
+ * Converts the 6 simplified answers to the full DIMENSIONES score structure.
+ * Each question feeds one or more dimensions (dimKeys).
+ * When a question maps to multiple dimensions, its value is applied to each.
+ * Dimensions not covered by any question get a neutral score of 2.
+ */
+function rvMapAnswersToScores() {
+  // Accumulate values per dimension
+  const dimAccum = {};
+  const dimCount = {};
+
+  REVIEW_QUESTIONS.forEach(q => {
+    const val = RV.answers[q.id] || 2; // default 2 (medio) if unanswered
+    q.dimKeys.forEach(dk => {
+      if (!dimAccum[dk]) { dimAccum[dk] = 0; dimCount[dk] = 0; }
+      dimAccum[dk] += val;
+      dimCount[dk]++;
+    });
+  });
+
+  // Build scores array per dimension (length matches DIMENSIONES[n].preguntas length)
+  const scores = {};
+  DIMENSIONES.forEach(dim => {
+    const avg = dimCount[dim.key] ? dimAccum[dim.key] / dimCount[dim.key] : 2;
+    // Fill all question slots with the averaged value (rounded to simulate full evaluation)
+    scores[dim.key] = dim.preguntas.map(() => Math.round(avg));
+  });
+  return scores;
+}
+
+/* ---- BUILD CONFIRMATION SCREEN ---- */
+
+function rvBuildConfirm() {
+  const scores = rvMapAnswersToScores();
+  const calc = calcScore(scores);
+  const color = calc.clasificacion === 'Promotor' ? 'var(--promotor)' : calc.clasificacion === 'Neutro' ? 'var(--neutro)' : 'var(--detractor)';
+  const badgeCls = calc.clasificacion === 'Promotor' ? 'badge-promotor' : calc.clasificacion === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+  const el = document.getElementById('rv-confirm-body');
+  el.innerHTML = `
+    <!-- Collaborator & context -->
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px">
+      <div class="confirm-row"><span class="confirm-key">Colaborador</span><span class="confirm-val">${RV.selectedColab?.nombre}</span></div>
+      <div class="confirm-row"><span class="confirm-key">Tienda</span><span class="confirm-val">${RV.context.tienda} · ${RV.context.pais}</span></div>
+      <div class="confirm-row"><span class="confirm-key">Líder evaluador</span><span class="confirm-val">${RV.context.lider}</span></div>
+      <div class="confirm-row"><span class="confirm-key">Tipo</span><span class="confirm-val">${RV.context.tipo === 'nuevo' ? '🌟 Nuevo ingreso' : '👥 Nómina'}</span></div>
+      <div class="confirm-row" style="border:none"><span class="confirm-key">Fecha</span><span class="confirm-val">${new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'short',year:'numeric'})}</span></div>
+    </div>
+
+    <!-- Answers -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      ${REVIEW_QUESTIONS.map(q => {
+        const v = RV.answers[q.id] || 0;
+        const labels = ['','Bajo','Medio','Alto'];
+        const colors = ['','var(--detractor)','var(--neutro)','var(--promotor)'];
+        return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text-dim);flex:1">${q.label}</span>
+          <span style="font-weight:800;font-family:var(--font-head);color:${colors[v]}">${v} · <span style="font-size:11px">${labels[v]}</span></span>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Score result -->
+    <div class="confirm-score-display">
+      <div>
+        <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px">Score Final</div>
+        <div class="confirm-score-num" style="color:${color}">${calc.total.toFixed(2)}</div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:2px">/ 5.00</div>
+      </div>
+      <span class="badge ${badgeCls}" style="font-size:14px;padding:8px 18px"><span class="dot"></span>${calc.clasificacion}</span>
+    </div>
+
+    ${document.getElementById('rv-oportunidad').value || document.getElementById('rv-formacion').value ? `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px">
+      ${document.getElementById('rv-oportunidad').value ? `<div style="font-size:12px;margin-bottom:4px"><span style="color:var(--text-dim)">Área de oportunidad: </span>${document.getElementById('rv-oportunidad').value}</div>` : ''}
+      ${document.getElementById('rv-formacion').value ? `<div style="font-size:12px"><span style="color:var(--text-dim)">Programa sugerido: </span>${document.getElementById('rv-formacion').value}</div>` : ''}
+    </div>` : ''}
+  `;
+}
+
+/* ---- SAVE EVALUATION ---- */
+
+function rvSaveEvaluacion() {
+  const scores = rvMapAnswersToScores();
+  const calc = calcScore(scores);
+
+  const now = new Date();
+  const evalDate = now.toISOString();
+
+  if (RV.selectedColab.isNew) {
+    // Create new collaborator in DATA
+    const newColab = {
+      id: nextId++,
+      nombre: RV.selectedColab.nombre,
+      tienda: RV.context.tienda,
+      pais: RV.context.pais,
+      lider: RV.context.lider,
+      vcd: RV.context.vcd,
+      antiguedad: RV.selectedColab.antiguedad || '<6m',
+      tipo: RV.context.tipo,
+      scores,
+      oportunidad: document.getElementById('rv-oportunidad').value.trim(),
+      formacion: document.getElementById('rv-formacion').value.trim(),
+      notas: '',
+      reviewAnswers: { ...RV.answers },
+      lastReviewDate: evalDate,
+      liderEvaluador: RV.context.lider,
+    };
+    DATA.push(newColab);
+    RV.selectedColab.id = newColab.id;
+  } else {
+    // Update existing collaborator
+    const idx = DATA.findIndex(x => x.id === RV.selectedColab.id);
+    if (idx >= 0) {
+      DATA[idx].scores = scores;
+      DATA[idx].tienda = RV.context.tienda;
+      DATA[idx].pais = RV.context.pais;
+      DATA[idx].lider = RV.context.lider;
+      DATA[idx].vcd = RV.context.vcd;
+      DATA[idx].tipo = RV.context.tipo;
+      DATA[idx].oportunidad = document.getElementById('rv-oportunidad').value.trim();
+      DATA[idx].formacion = document.getElementById('rv-formacion').value.trim();
+      DATA[idx].reviewAnswers = { ...RV.answers };
+      DATA[idx].lastReviewDate = evalDate;
+      DATA[idx].liderEvaluador = RV.context.lider;
+    }
+  }
+
+  // Add to session log
+  RV.sessionEvals.push({
+    nombre: RV.selectedColab.nombre,
+    score: calc.total,
+    clasificacion: calc.clasificacion,
+    time: now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  });
+
+  // Update dashboard
+  renderAll();
+  ;
+
+  // Show toast
+  showToast(`✓ ${RV.selectedColab.nombre} evaluado como <strong class="toast-name">${calc.clasificacion}</strong>`, 'success');
+
+  // Reset for next evaluation
+  setTimeout(() => {
+    RV.selectedColab = null;
+    RV.answers = {};
+    document.getElementById('rv-oportunidad').value = '';
+    document.getElementById('rv-formacion').value = '';
+    document.getElementById('rv-selected-colab').style.display = 'none';
+    document.getElementById('rv-buscar-colab').value = '';
+    document.getElementById('rv-nuevo-nombre').value = '';
+    document.getElementById('rv-nuevo-antig').value = '';
+    rvGoStep(2);
+    rvUpdateScorePreview();
+    
+  }, 800);
+}
+
+/* ---- CONTEXT DISPLAY (right panel) ---- */
+
+function rvUpdateContextDisplay() {
+  const el = document.getElementById('rv-context-display');
+  const ctx = RV.context;
+  el.innerHTML = `
+    <div class="ctx-row"><span class="ctx-key">País</span><span class="ctx-val">${ctx.pais || '—'}</span></div>
+    <div class="ctx-row"><span class="ctx-key">Tienda</span><span class="ctx-val">${ctx.tienda || '—'}</span></div>
+    <div class="ctx-row"><span class="ctx-key">Líder</span><span class="ctx-val">${ctx.lider || '—'}</span></div>
+    <div class="ctx-row"><span class="ctx-key">VCD</span><span class="ctx-val">${ctx.vcd || '—'}</span></div>
+    <div class="ctx-row" style="border:none"><span class="ctx-key">Tipo</span><span class="ctx-val">${ctx.tipo === 'nuevo' ? '🌟 Nuevo ingreso' : '👥 Nómina'}</span></div>
+  `;
+}
+
+function rvUpdateSessionList() {
+  const el = document.getElementById('rv-session-list');
+  if (!RV.sessionEvals.length) {
+    el.innerHTML = `<div style="color:var(--text-muted);font-size:13px">Ninguna evaluación guardada aún.</div>`;
+    return;
+  }
+  el.innerHTML = [...RV.sessionEvals].reverse().map(e => {
+    const color = e.clasificacion === 'Promotor' ? 'var(--promotor)' : e.clasificacion === 'Neutro' ? 'var(--neutro)' : 'var(--detractor)';
+    return `<div class="session-item">
+      <div class="session-item-name">${e.nombre}</div>
+      <span style="font-size:10px;color:var(--text-muted)">${e.time}</span>
+      <span class="session-item-score" style="color:${color}">${e.score.toFixed(2)}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ---- TOAST NOTIFICATION ---- */
+
+let toastTimer;
+function showToast(html, type = 'success') {
+  let t = document.getElementById('global-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'global-toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  const borderColor = type === 'success' ? 'var(--promotor)' : type === 'warning' ? 'var(--neutro)' : 'var(--detractor)';
+  t.style.borderColor = borderColor;
+  t.innerHTML = `<span class="toast-icon">${type === 'success' ? '✓' : '⚠'}</span><span class="toast-text">${html}</span>`;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ============================================================
+   CONFIGURATION
+   ============================================================ */
+
+function buildWeightInputs() {
+  const el = document.getElementById('weight-inputs');
+  el.innerHTML = DIMENSIONES.map(dim => `
+    <div style="display:flex;align-items:center;gap:12px">
+      <label style="flex:1;font-size:13px">${dim.label}</label>
+      <input type="number" step="1" min="0" max="100" id="w-${dim.key}" value="${Math.round(CONFIG.pesos[dim.key]*100)}"
+        style="width:70px" class="form-input" oninput="updateWeightTotal()">
+      <span style="color:var(--text-dim);font-size:12px">%</span>
+    </div>
+  `).join('');
+  updateWeightTotal();
+}
+
+function updateWeightTotal() {
+  let total = 0;
+  DIMENSIONES.forEach(dim => { total += parseInt(document.getElementById('w-' + dim.key)?.value || 0); });
+  const el = document.getElementById('weight-total');
+  el.innerHTML = `Total: <strong style="color:${total===100?'var(--promotor)':'var(--detractor)'}">${total}%</strong> ${total===100?'✓':'— debe sumar 100%'}`;
+}
+
+function saveWeights() {
+  let total = 0;
+  DIMENSIONES.forEach(dim => { total += parseInt(document.getElementById('w-' + dim.key)?.value || 0); });
+  if (total !== 100) { alert('Las ponderaciones deben sumar exactamente 100%.'); return; }
+  DIMENSIONES.forEach(dim => { CONFIG.pesos[dim.key] = parseInt(document.getElementById('w-' + dim.key).value) / 100; });
+  renderAll();
+  alert('✓ Ponderaciones actualizadas. Todos los scores recalculados.');
+}
+
+function saveThresholds() {
+  CONFIG.umbrales.promotor = parseFloat(document.getElementById('th-promotor').value);
+  CONFIG.umbrales.neutro = parseFloat(document.getElementById('th-neutro').value);
+  CONFIG.umbrales.fit_min = parseFloat(document.getElementById('th-fit').value);
+  CONFIG.umbrales.engage_min = parseFloat(document.getElementById('th-engage').value);
+  renderAll();
+  alert('✓ Umbrales actualizados. Todos los scores recalculados.');
+}
+
+/* ============================================================
+   TALENT REVIEW TAB
+   ============================================================ */
+
+/**
+ * TALENT REVIEW INCLUSION RULE:
+ * A person enters Talent Review if their `potencial` dimension avg >= TR_POT_THRESHOLD.
+ * potencial score: 1=Bajo, 2=Medio, 3=Alto
+ * Default: show Alto (≥3). Toggle allows also showing Medio (≥2).
+ *
+ * TO CHANGE THE RULE: edit TR_POT_THRESHOLD below.
+ */
+const TR_POT_ALTO  = 5;  // Sí en potencial   // score for "Alto potencial"
+const TR_POT_MEDIO = 5;  // igual que alto (binario)   // score for "Medio potencial"
+
+// Status labels cycle on click per person (stored by id)
+const TR_STATUSES = ['none', 'listo', 'dev', 'obs'];
+const TR_STATUS_LABELS = { none: '— Sin estado', listo: '🚀 Listo para crecer', dev: '📘 En desarrollo', obs: '👁 En observación' };
+let trStatusMap = {};   // { id: 'listo' | 'dev' | 'obs' | 'none' }
+
+// Current potencial filter: 'alto' | 'medio' | 'todos'
+let trPotFilter = 'alto';
+
+/* ── Helper: alias to global cleanDistrito ─────────────────── */
+const trCleanDistrito = cleanDistrito;
+
+/* ── Get potencial score for a collaborator ───────────────── */
+function trGetPotScore(c) {
+  const s = c.scores?.potencial || [];
+  if (!s.length) return 0;
+  return s.reduce((a, b) => a + b, 0) / s.length;
+}
+
+/* ── Get the talent pool according to current filter ─────── */
+function trGetPool() {
+  const threshold = trPotFilter === 'alto' ? TR_POT_ALTO
+                  : trPotFilter === 'medio' ? TR_POT_MEDIO
+                  : 1; // 'todos' = any score ≥ 1
+  return DATA
+    .map(c => ({ ...c, calc: getColaboradorCalc(c), potScore: trGetPotScore(c) }))
+    .filter(c => c.potScore >= threshold);
+}
+
+/* ── Main render entry point ──────────────────────────────── */
+function renderTalent() {
+  const pool = trGetPool();
+  trRenderInsights(pool);
+  trRenderKPIs(pool);
+  trRenderCharts(pool);
+  trRenderTable();
+  trPopulateFilters(pool);
+}
+
+/* ── Toggle potencial filter ──────────────────────────────── */
+function trSetPotFilter(val, btn) {
+  trPotFilter = val;
+  document.querySelectorAll('.tr-pot-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTalent();
+}
+
+/* ── Insights ─────────────────────────────────────────────── */
+function trRenderInsights(pool) {
+  const total = pool.length;
+  const totalNomina = DATA.length;
+  const promotores = pool.filter(c => c.calc.clasificacion === 'Promotor').length;
+  const neutros    = pool.filter(c => c.calc.clasificacion === 'Neutro').length;
+  const nuevos     = pool.filter(c => c.tipo === 'nuevo').length;
+
+  // Most common distrito
+  const distCount = {};
+  pool.forEach(c => { const d = trCleanDistrito(c.vcd); distCount[d] = (distCount[d]||0)+1; });
+  const topDist = Object.entries(distCount).sort((a,b)=>b[1]-a[1])[0];
+
+  const pctNomina = Math.round((total / totalNomina) * 100);
+  const pctProm   = Math.round((promotores / (total||1)) * 100);
+  const pctNeutroDev = Math.round((neutros / (total||1)) * 100);
+
+  const insights = [
+    { icon: '◈', text: `<strong>${total} personas</strong> identificadas con potencial de crecimiento, representando el <strong>${pctNomina}%</strong> de la nómina evaluada.` },
+    { icon: '⬆', text: topDist ? `La mayor concentración de talento se encuentra en <strong>${topDist[0]}</strong> con <strong>${topDist[1]} personas</strong>.` : 'Sin datos de distrito disponibles.' },
+    { icon: '✦', text: `<strong>${pctProm}%</strong> del talento con potencial también clasifica como <strong>ADN Promotor</strong> — talento listo para activar.` },
+    { icon: '📘', text: neutros > 0 ? `<strong>${pctNeutroDev}%</strong> presenta potencial alto con ADN Neutro — oportunidad de desarrollo cultural antes de promover.` : 'Todo el talento con potencial tiene ADN Promotor.' },
+  ];
+
+  document.getElementById('tr-insights').innerHTML = insights.map(i =>
+    `<div class="tr-insight"><div class="tr-insight-icon">${i.icon}</div><div class="tr-insight-text">${i.text}</div></div>`
+  ).join('');
+}
+
+/* ── KPIs ─────────────────────────────────────────────────── */
+function trRenderKPIs(pool) {
+  const total      = pool.length;
+  const promotores = pool.filter(c => c.calc.clasificacion === 'Promotor').length;
+  const neutros    = pool.filter(c => c.calc.clasificacion === 'Neutro').length;
+  const nuevos     = pool.filter(c => c.tipo === 'nuevo').length;
+  const avgScore   = pool.length ? (pool.reduce((a,c) => a + c.calc.total, 0) / pool.length).toFixed(2) : '—';
+
+  // Count distritos
+  const distritos = new Set(pool.map(c => trCleanDistrito(c.vcd))).size;
+
+  document.getElementById('tr-kpis').innerHTML = `
+    <div class="kpi blue fade-in" style="border-top:2px solid #c97fff">
+      <div class="kpi-label">Total talento</div>
+      <div class="kpi-value" style="color:#c97fff">${total}</div>
+      <div class="kpi-sub">${Math.round(total/DATA.length*100)}% de la nómina</div>
+    </div>
+    <div class="kpi green fade-in">
+      <div class="kpi-label">Promotores con potencial</div>
+      <div class="kpi-value">${promotores}</div>
+      <div class="kpi-sub">Listos para activar</div>
+    </div>
+    <div class="kpi orange fade-in">
+      <div class="kpi-label">Potencial + ADN Neutro</div>
+      <div class="kpi-value">${neutros}</div>
+      <div class="kpi-sub">Requieren desarrollo cultural</div>
+    </div>
+    <div class="kpi blue fade-in">
+      <div class="kpi-label">Nuevos ingresos</div>
+      <div class="kpi-value">${nuevos}</div>
+      <div class="kpi-sub">Con potencial detectado</div>
+    </div>
+    <div class="kpi blue fade-in">
+      <div class="kpi-label">Score ADN promedio</div>
+      <div class="kpi-value">${avgScore}</div>
+      <div class="kpi-sub">Del pool de talento</div>
+    </div>
+    <div class="kpi blue fade-in">
+      <div class="kpi-label">Distritos representados</div>
+      <div class="kpi-value">${distritos}</div>
+      <div class="kpi-sub">Con talento identificado</div>
+    </div>
+  `;
+}
+
+/* ── Charts ───────────────────────────────────────────────── */
+function trRenderCharts(pool) {
+  // 1. ADN × Potencial matrix (grouped bar)
+  destroyChart('tr-chart-matrix');
+  const ctx1 = document.getElementById('tr-chart-matrix')?.getContext('2d');
+  if (ctx1) {
+    const cats = ['Promotor', 'Neutro', 'Detractor'];
+    const altoData  = cats.map(c => pool.filter(p => p.calc.clasificacion === c && p.potScore >= TR_POT_ALTO).length);
+    const medioData = cats.map(c => pool.filter(p => p.calc.clasificacion === c && p.potScore >= TR_POT_MEDIO && p.potScore < TR_POT_ALTO).length);
+    chartInstances['tr-chart-matrix'] = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: cats,
+        datasets: [
+          { label: 'Alto potencial',  data: altoData,  backgroundColor: 'rgba(201,127,255,0.8)', borderRadius: 5 },
+          { label: 'Medio potencial', data: medioData, backgroundColor: 'rgba(245,166,35,0.6)',  borderRadius: 5 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#a0a8c0', font: { size: 12, family: 'Syne', weight: '600' } }, grid: { display: false } },
+          y: { ticks: { color: '#7a8099', font: { size: 11 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        },
+        plugins: { legend: { labels: { color: '#7a8099', font: { size: 11, family: 'DM Sans' }, padding: 14 } } }
+      }
+    });
+  }
+
+  // 2. Potencial por Distrito (horizontal bar)
+  destroyChart('tr-chart-distrito');
+  const ctx2 = document.getElementById('tr-chart-distrito')?.getContext('2d');
+  if (ctx2) {
+    const distMap = {};
+    pool.forEach(c => { const d = trCleanDistrito(c.vcd); distMap[d] = (distMap[d]||0)+1; });
+    const dLabels = Object.keys(distMap).sort();
+    const dData   = dLabels.map(d => distMap[d]);
+    chartInstances['tr-chart-distrito'] = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: dLabels,
+        datasets: [{ label: 'Con potencial', data: dData, backgroundColor: 'rgba(201,127,255,0.75)', borderRadius: 5 }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#7a8099', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { ticks: { color: '#a0a8c0', font: { size: 11, family: 'Syne', weight: '600' } }, grid: { display: false } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+
+  // 3. Score ADN distribution (histogram-style)
+  destroyChart('tr-chart-score');
+  const ctx3 = document.getElementById('tr-chart-score')?.getContext('2d');
+  if (ctx3) {
+    // Bucket scores into ranges
+    const buckets = { '1–2': 0, '2–3': 0, '3–4': 0, '4–5': 0 };
+    pool.forEach(c => {
+      const s = c.calc.total;
+      if (s < 2)      buckets['1–2']++;
+      else if (s < 3) buckets['2–3']++;
+      else if (s < 4) buckets['3–4']++;
+      else            buckets['4–5']++;
+    });
+    const bColors = ['rgba(255,79,106,0.7)', 'rgba(255,79,106,0.5)', 'rgba(245,166,35,0.7)', 'rgba(34,201,142,0.8)'];
+    chartInstances['tr-chart-score'] = new Chart(ctx3, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(buckets),
+        datasets: [{ label: 'Personas', data: Object.values(buckets), backgroundColor: bColors, borderRadius: 5 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { ticks: { color: '#a0a8c0', font: { size: 11 } }, grid: { display: false } },
+          y: { ticks: { color: '#7a8099', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+}
+
+/* ── Populate filter dropdowns ────────────────────────────── */
+function trPopulateFilters(pool) {
+  const distritos = [...new Set(pool.map(c => trCleanDistrito(c.vcd)))].sort();
+  const tiendas   = [...new Set(pool.map(c => c.tienda).filter(Boolean))].sort();
+
+  const distEl = document.getElementById('tr-f-distrito');
+  const cur = distEl.value;
+  distEl.innerHTML = '<option value="">Todos</option>' +
+    distritos.map(d => `<option value="${d}"${d===cur?' selected':''}>${d}</option>`).join('');
+
+  const tEl = document.getElementById('tr-f-tienda');
+  const curT = tEl.value;
+  tEl.innerHTML = '<option value="">Todas</option>' +
+    tiendas.map(t => `<option value="${t}"${t===curT?' selected':''}>${t}</option>`).join('');
+}
+
+/* ── Table ────────────────────────────────────────────────── */
+function trRenderTable() {
+  const pool = trGetPool();
+
+  // Apply filters
+  const search   = document.getElementById('tr-search')?.value.toLowerCase() || '';
+  const fAdn     = document.getElementById('tr-f-adn')?.value || '';
+  const fDist    = document.getElementById('tr-f-distrito')?.value || '';
+  const fTienda  = document.getElementById('tr-f-tienda')?.value || '';
+  const fTipo    = document.getElementById('tr-f-tipo')?.value || '';
+  const sort     = document.getElementById('tr-sort')?.value || 'pot-desc';
+
+  let rows = pool.filter(c => {
+    if (search && !c.nombre.toLowerCase().includes(search)) return false;
+    if (fAdn && c.calc.clasificacion !== fAdn) return false;
+    if (fDist && trCleanDistrito(c.vcd) !== fDist) return false;
+    if (fTienda && c.tienda !== fTienda) return false;
+    if (fTipo && c.tipo !== fTipo) return false;
+    return true;
+  });
+
+  // Sort
+  if (sort === 'pot-desc')   rows.sort((a,b) => b.potScore - a.potScore || b.calc.total - a.calc.total);
+  if (sort === 'score-desc') rows.sort((a,b) => b.calc.total - a.calc.total);
+  if (sort === 'nombre-asc') rows.sort((a,b) => a.nombre.localeCompare(b.nombre));
+
+  const tbody = document.getElementById('tr-tbody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text-muted)">Sin resultados con los filtros actuales.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map((c, i) => {
+    const badgeCls = c.calc.clasificacion === 'Promotor' ? 'badge-promotor' : c.calc.clasificacion === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+    const scoreColor = c.calc.clasificacion === 'Promotor' ? 'var(--promotor)' : c.calc.clasificacion === 'Neutro' ? 'var(--neutro)' : 'var(--detractor)';
+    const potBadge = c.potScore >= TR_POT_ALTO
+      ? `<span class="pot-badge-alto"><span style="width:6px;height:6px;border-radius:50%;background:#c97fff;display:inline-block"></span> Alto</span>`
+      : `<span class="pot-badge-medio"><span style="width:6px;height:6px;border-radius:50%;background:var(--neutro);display:inline-block"></span> Medio</span>`;
+
+    const status = trStatusMap[c.id] || 'none';
+    const statusCls = `status-badge status-${status}`;
+    const statusLabel = { none:'— Estado', listo:'🚀 Listo', dev:'📘 Desarrollo', obs:'👁 Observación' }[status];
+
+    return `<tr>
+      <td style="color:var(--text-muted)">${i+1}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#c97fff,#7b5eff);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:800;font-size:10px;color:#fff;flex-shrink:0">${c.nombre.split(' ').map(w=>w[0]).slice(0,2).join('')}</div>
+          <div>
+            <div style="font-weight:600;font-size:13px">${c.nombre}</div>
+            ${c.tipo==='nuevo'?'<span class="badge badge-nuevo" style="font-size:9px;padding:1px 6px">Nuevo</span>':''}
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--text-dim);font-size:12px">${c.tienda||'—'}</td>
+      <td style="color:var(--text-dim);font-size:12px">${trCleanDistrito(c.vcd)}</td>
+      <td style="color:var(--text-dim);font-size:12px">${c.lider||'—'}</td>
+      <td>${c.tipo==='nuevo'?'<span style="color:var(--accent);font-size:11px">Nuevo</span>':'<span style="color:var(--text-muted);font-size:11px">Nómina</span>'}</td>
+      <td><span style="font-family:var(--font-head);font-weight:700;color:${scoreColor}">${c.calc.total.toFixed(2)}</span></td>
+      <td><span class="badge ${badgeCls}"><span class="dot"></span>${c.calc.clasificacion}</span></td>
+      <td>${potBadge}</td>
+      <td><span class="${statusCls}" onclick="trCycleStatus(${c.id}, this)">${statusLabel}</span></td>
+      <td style="font-size:12px;color:var(--text-dim);max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.oportunidad||'—'}</td>
+      <td style="font-size:12px;color:var(--text-dim);max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.formacion||'—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="trOpenDetail(${c.id})">Ver ↗</button></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── Cycle status on click ────────────────────────────────── */
+function trCycleStatus(id, el) {
+  const cur = trStatusMap[id] || 'none';
+  const idx = TR_STATUSES.indexOf(cur);
+  const next = TR_STATUSES[(idx + 1) % TR_STATUSES.length];
+  trStatusMap[id] = next;
+  const labels = { none:'— Estado', listo:'🚀 Listo', dev:'📘 Desarrollo', obs:'👁 Observación' };
+  el.textContent = labels[next];
+  el.className = `status-badge status-${next}`;
+}
+
+/* ── Detail modal ─────────────────────────────────────────── */
+function trOpenDetail(id) {
+  const raw = DATA.find(x => x.id === id);
+  if (!raw) return;
+  const c = { ...raw, calc: getColaboradorCalc(raw), potScore: trGetPotScore(raw) };
+
+  const badgeCls  = c.calc.clasificacion === 'Promotor' ? 'badge-promotor' : c.calc.clasificacion === 'Neutro' ? 'badge-neutro' : 'badge-detractor';
+  const scoreColor = c.calc.clasificacion === 'Promotor' ? 'var(--promotor)' : c.calc.clasificacion === 'Neutro' ? 'var(--neutro)' : 'var(--detractor)';
+  const status = trStatusMap[c.id] || 'none';
+  const statusLabels = { none:'Sin estado', listo:'🚀 Listo para crecer', dev:'📘 En desarrollo', obs:'👁 En observación' };
+  const initials = c.nombre.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+
+  document.getElementById('detalle-nombre').innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#c97fff,#7b5eff);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:800;font-size:16px;color:#fff;flex-shrink:0">${initials}</div>
+      <div>
+        <div style="font-size:20px">${c.nombre}</div>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          <span class="hipo-ribbon">◈ HiPo</span>
+          <span class="badge ${badgeCls}"><span class="dot"></span>${c.calc.clasificacion}</span>
+          ${c.tipo==='nuevo'?'<span class="badge badge-nuevo">Nuevo ingreso</span>':''}
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('detalle-body').innerHTML = `
+    <!-- Context -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
+      ${[
+        ['Tienda', c.tienda||'—'], ['Distrito', trCleanDistrito(c.vcd)],
+        ['Líder', c.lider||'—'], ['Antigüedad', c.antiguedad],
+        ['Tipo', c.tipo==='nuevo'?'🌟 Nuevo ingreso':'👥 Nómina'],
+        ['Estado', statusLabels[status]]
+      ].map(([k,v]) => `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:3px">${k}</div>
+        <div style="font-size:13px;font-weight:600">${v}</div>
+      </div>`).join('')}
+    </div>
+
+    <!-- Score + potencial -->
+    <div style="display:flex;gap:10px;margin-bottom:18px">
+      <div style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center">
+        <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Score ADN</div>
+        <div style="font-family:var(--font-head);font-weight:800;font-size:32px;color:${scoreColor}">${c.calc.total.toFixed(2)}</div>
+        <div style="font-size:11px;color:var(--text-muted)">/ 5.00</div>
+      </div>
+      <div style="flex:1;background:rgba(201,127,255,0.08);border:1px solid rgba(201,127,255,0.25);border-radius:var(--radius);padding:16px;text-align:center">
+        <div style="font-size:11px;color:#c97fff;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px">Nivel de Potencial</div>
+        <div style="font-family:var(--font-head);font-weight:800;font-size:32px;color:#c97fff">${c.potScore.toFixed(1)}</div>
+        <div style="font-size:11px;color:rgba(201,127,255,0.7)">${c.potScore >= TR_POT_ALTO ? '◈ Alto' : '◆ Medio'}</div>
+      </div>
+    </div>
+
+    <!-- Dimensions -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-dim);margin-bottom:10px">Scores por dimensión</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${DIMENSIONES.map(dim => {
+          const score = c.calc.dims[dim.key] || 0;
+          const pct = Math.round((score/3)*100);
+          const col = score >= 4 ? 'var(--promotor)' : score >= 3 ? 'var(--neutro)' : 'var(--detractor)';
+          const peso = Math.round(CONFIG.pesos[dim.key]*100);
+          return `<div class="tr-dim-row">
+            <span class="tr-dim-label">${dim.label} <span style="color:var(--accent);font-size:10px">${peso}%</span></span>
+            <div class="tr-dim-bar-wrap"><div class="tr-dim-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+            <span class="tr-dim-val" style="color:${col}">${score.toFixed(1)}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <!-- Qualitative -->
+    ${(c.oportunidad||c.formacion||c.notas) ? `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-dim);margin-bottom:10px">Desarrollo y observaciones</div>
+      ${c.oportunidad?`<div style="margin-bottom:8px"><span style="font-size:11px;color:var(--text-muted)">Área de oportunidad · </span><span style="font-size:13px">${c.oportunidad}</span></div>`:''}
+      ${c.formacion?`<div style="margin-bottom:8px"><span style="font-size:11px;color:var(--text-muted)">Programa sugerido · </span><span style="font-size:13px">${c.formacion}</span></div>`:''}
+      ${c.notas?`<div><span style="font-size:11px;color:var(--text-muted)">Notas · </span><span style="font-size:13px">${c.notas}</span></div>`:''}
+    </div>` : ''}
+  `;
+  openModal('modal-detalle');
+}
+
+/* ── Export Talent Review CSV ─────────────────────────────── */
+function trExport() {
+  const pool = trGetPool();
+  const headers = ['nombre','tienda','distrito','lider','antiguedad','tipo','score_adn','clasificacion_adn','potencial_score','potencial_nivel','estado','oportunidad','formacion','notas'];
+  const rows = pool.map(c => {
+    const status = trStatusMap[c.id] || 'none';
+    return [
+      c.nombre, c.tienda, trCleanDistrito(c.vcd), c.lider, c.antiguedad, c.tipo,
+      c.calc.total.toFixed(2), c.calc.clasificacion,
+      c.potScore.toFixed(1), c.potScore >= TR_POT_ALTO ? 'Alto' : 'Medio',
+      TR_STATUS_LABELS[status], c.oportunidad||'', c.formacion||'', c.notas||''
+    ].map(v => `"${v}"`).join(',');
+  });
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'TalentReview_BSG.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Set Chart.js defaults for dark theme
+  Chart.defaults.color = '#7a8099';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+  Chart.defaults.font.family = 'DM Sans';
+
+  buildWeightInputs();
+  renderAll();
+  
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+});
+</script>
+</body>
+</html>
