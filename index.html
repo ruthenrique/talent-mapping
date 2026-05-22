@@ -1618,7 +1618,7 @@ function renderCalibration() {
       }</td>
       <td>${calib.estado}</td>
       <td>${editorInfo}</td>
-      <td>${canCalibrate() ? `<button class="btn-sm" onclick="openCalib(${d.id})">Calibrar</button>` : '<span style="color: var(--text-muted); font-size: 11px;">Solo lectura</span>'}</td>
+      <td>${canCalibrate() ? `<button class="btn-sm" onclick="openCalib(${d.id})">Calibrar</button>` : '<span style="color: var(--text-muted); font-size: 11px;">Solo lectura</span>'}${CURRENT_SESSION.role === 'super_admin' && calib.clasificacion ? ` <button class="btn-sm" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);" onclick="deleteCalibration(${d.id})">Eliminar</button>` : ''}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -1760,6 +1760,21 @@ async function saveCalibration() {
   }
   
   closeModal('modal-calib');
+  renderCalibration();
+}
+
+async function deleteCalibration(personId) {
+  if (CURRENT_SESSION.role !== 'super_admin') { alert('Solo el Super Administrador puede eliminar.'); return; }
+  if (!confirm('¿Eliminar definitivamente la calibración de esta persona?')) return;
+  
+  delete CALIBRACION_DATA[personId];
+  
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('calibration_data').delete().eq('person_id', String(personId));
+      console.log('✓ Calibración eliminada de Supabase');
+    } catch (e) { console.error('Error eliminando:', e); }
+  }
   renderCalibration();
 }
 
@@ -1931,7 +1946,7 @@ function renderPlanAccion() {
                 ${a.fecha ? `📅 ${a.fecha} · ` : ''}👤 ${a.createdBy} · ${a.createdAt}
               </div>
             </div>
-            <button onclick="deleteAccion(${originalIdx})" style="background: transparent; color: var(--detractor); border: 1px solid var(--detractor-border); font-size: 10px; padding: 3px 8px;">Eliminar</button>
+            <button onclick="deleteAccion(${originalIdx})" style="background: transparent; color: var(--detractor); border: 1px solid var(--detractor-border); font-size: 10px; padding: 3px 8px; display:${CURRENT_SESSION.role === 'super_admin' ? 'inline-block' : 'none'};">Eliminar</button>
           </div>
         `;
       }).join('');
@@ -2039,7 +2054,8 @@ function addAccion() {
 }
 
 function deleteAccion(idx) {
-  if (!confirm('¿Eliminar esta acción?')) return;
+  if (CURRENT_SESSION.role !== 'super_admin') { alert('Solo el Super Administrador puede eliminar acciones.'); return; }
+  if (!confirm('¿Eliminar definitivamente esta acción?')) return;
   if (PLANES_DATA[currentDistritoPlan]) {
     PLANES_DATA[currentDistritoPlan].acciones.splice(idx, 1);
     renderPlanAccion();
