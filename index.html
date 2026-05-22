@@ -956,6 +956,14 @@
 
 <!-- MODAL: agregar tarea de plan de acción -->
 
+<div id="modal-detail" class="modal-overlay">
+  <div class="modal" style="max-width: 720px;">
+    <button class="modal-close" onclick="closeModal('modal-detail')">✕</button>
+    <div class="modal-header">Detalle de persona</div>
+    <div id="modal-detail-body" style="max-height:70vh; overflow-y:auto;">—</div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    USUARIOS · 4 niveles de acceso
@@ -1667,7 +1675,7 @@ function renderCalibration() {
       }</td>
       <td>${calib.estado}</td>
       <td>${editorInfo}</td>
-      <td>${canCalibrate() ? `<button class="btn-sm" onclick="openCalib(${d.id})">Calibrar</button>` : '<span style="color: var(--text-muted); font-size: 11px;">Solo lectura</span>'}${CURRENT_SESSION.role === 'super_admin' && calib.clasificacion ? ` <button class="btn-sm" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);" onclick="deleteCalibration(${d.id})">Eliminar</button>` : ''}</td>
+      <td><button class="btn-sm" style="background:transparent;color:var(--accent);border:1px solid var(--accent);" onclick="openPersonDetail(${d.id})">Ver</button> ${canCalibrate() ? `<button class="btn-sm" onclick="openCalib(${d.id})">Calibrar</button>` : '<span style="color: var(--text-muted); font-size: 11px;">Solo lectura</span>'}${CURRENT_SESSION.role === 'super_admin' && calib.clasificacion ? ` <button class="btn-sm" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);" onclick="deleteCalibration(${d.id})">Eliminar</button>` : ''}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -1825,6 +1833,83 @@ async function deleteCalibration(personId) {
     } catch (e) { console.error('Error eliminando:', e); }
   }
   renderCalibration();
+}
+
+function openPersonDetail(personId) {
+  const p = EXCEL_DATA.find(d => d.id === personId);
+  if (!p) return;
+  const calib = CALIBRACION_DATA[personId] || {};
+  const comentarios = COMENTARIOS_PLAN[personId] || [];
+  const planDistrito = (PLANES_DATA[p.distrito]?.acciones) || [];
+  
+  const infoHTML = `
+    <div style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:14px;">
+      <div style="font-family:var(--font-head); font-weight:700; font-size:15px; margin-bottom:8px;">${p.nombre}</div>
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; font-size:12px;">
+        <div><strong>Rol:</strong> ${p.rol || '—'}</div>
+        <div><strong>Tienda:</strong> ${shortName(p.tienda) || '—'}</div>
+        <div><strong>Distrito:</strong> ${p.distrito || '—'}</div>
+        <div><strong>Marca:</strong> ${p.marca || '—'}</div>
+        <div><strong>Score:</strong> ${p.score?.toFixed(2) || '—'}</div>
+        <div><strong>Clasif. VCD:</strong> <span class="badge ${classBadge(p.clasificacion)}">${p.clasificacion}</span></div>
+        <div><strong>Potencial:</strong> ${p.potencial || '—'}</div>
+        <div><strong>Reselección:</strong> ${p.reseleccion || '—'}</div>
+      </div>
+    </div>
+  `;
+  
+  const calibHTML = `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:14px;">
+      <div style="font-family:var(--font-head); font-weight:700; font-size:13px; margin-bottom:8px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.3px;">Calibración</div>
+      ${calib.clasificacion ? `
+        <div style="font-size:12px; margin-bottom:6px;"><strong>Estado:</strong> ${calib.estado || '—'}</div>
+        <div style="font-size:12px; margin-bottom:6px;"><strong>Clasificación calibrada:</strong> <span class="badge ${classBadge(calib.clasificacion)}">${calib.clasificacion}</span></div>
+        <div style="font-size:12px; margin-bottom:6px;"><strong>Última edición:</strong> ${calib.ultima_edicion || '—'} · ${calib.ultimo_usuario || '—'}</div>
+        ${calib.comentario ? `<div style="font-size:12px; margin-top:8px; padding:8px; background:var(--surface2); border-radius:6px;"><strong>Comentario:</strong> ${calib.comentario}</div>` : ''}
+        ${(calib.historial && calib.historial.length) ? `
+          <details style="margin-top:8px;">
+            <summary style="font-size:11px; color:var(--accent); cursor:pointer;">Historial (${calib.historial.length})</summary>
+            <div style="font-size:11px; margin-top:6px;">
+              ${calib.historial.slice().reverse().map(h => `
+                <div style="padding:6px 0; border-bottom:1px solid var(--border);">
+                  ${h.fecha} · ${h.usuario}<br>
+                  ${h.clasif_anterior ? `${h.clasif_anterior} → ` : ''}${h.clasif_nueva || h.estado || ''}
+                  ${h.comentario ? `<div style="color:var(--text-dim); margin-top:2px;">"${h.comentario}"</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </details>
+        ` : ''}
+      ` : '<div style="font-size:12px; color:var(--text-muted); font-style:italic;">Sin calibración registrada</div>'}
+    </div>
+  `;
+  
+  const feedbackHTML = `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:14px;">
+      <div style="font-family:var(--font-head); font-weight:700; font-size:13px; margin-bottom:8px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.3px;">Feedback / Observaciones</div>
+      ${comentarios.length ? comentarios.slice().reverse().map(c => `
+        <div style="padding:8px 0; border-bottom:1px solid var(--border); font-size:12px;">
+          "${c.texto}"<br>
+          <span style="color:var(--text-muted); font-size:10px;">${c.fecha} ${c.hora} · ${c.usuario}</span>
+        </div>
+      `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic;">Sin observaciones registradas</div>'}
+    </div>
+  `;
+  
+  const planDistritoHTML = `
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:14px;">
+      <div style="font-family:var(--font-head); font-weight:700; font-size:13px; margin-bottom:8px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.3px;">Plan de Acción del Distrito (${p.distrito})</div>
+      ${planDistrito.length ? planDistrito.map(a => `
+        <div style="padding:8px 0; border-bottom:1px solid var(--border); font-size:12px;">
+          <strong>${a.tipo || ''}:</strong> ${a.accion}<br>
+          <span style="color:var(--text-muted); font-size:10px;">📅 ${a.fecha || '—'} · 👤 ${a.createdBy} · ${a.createdAt}</span>
+        </div>
+      `).join('') : '<div style="font-size:12px; color:var(--text-muted); font-style:italic;">Sin acciones en este distrito</div>'}
+    </div>
+  `;
+  
+  document.getElementById('modal-detail-body').innerHTML = infoHTML + calibHTML + feedbackHTML + planDistritoHTML;
+  openModal('modal-detail');
 }
 
 /* ============================================================
@@ -2082,47 +2167,84 @@ function selectPlanTipo(el, tipo) {
   el.classList.add('active');
 }
 
-function addAccion() {
+async function addAccion() {
   const accion = document.getElementById('plan-nueva-accion')?.value.trim();
   const fecha  = document.getElementById('plan-nueva-fecha')?.value || '';
-  // Campos obligatorios
   if (!accion) { alert('La acción concreta es obligatoria.'); return; }
   if (!fecha)  { alert('La fecha de seguimiento es obligatoria.'); return; }
   if (!_planTipoSeleccionado) { alert('Seleccioná el tipo (Detractor, Neutro o Promotor).'); return; }
 
-  if (!PLANES_DATA[currentDistritoPlan]) PLANES_DATA[currentDistritoPlan] = { acciones: [] };
-  PLANES_DATA[currentDistritoPlan].acciones.push({
+  const nueva = {
     accion:    accion,
     tipo:      _planTipoSeleccionado,
     fecha:     fecha,
     createdBy: CURRENT_USER?.fullname || 'Usuario',
     createdAt: new Date().toLocaleString('es-AR')
-  });
+  };
+  if (!PLANES_DATA[currentDistritoPlan]) PLANES_DATA[currentDistritoPlan] = { acciones: [] };
+  PLANES_DATA[currentDistritoPlan].acciones.push(nueva);
+  
+  if (window.sbClient) {
+    try {
+      const { data, error } = await window.sbClient.from('plan_acciones').insert([{
+        distrito: currentDistritoPlan,
+        accion: accion,
+        tipo: _planTipoSeleccionado,
+        fecha: fecha,
+        created_by: nueva.createdBy
+      }]).select();
+      if (error) console.error(error);
+      else if (data && data[0]) nueva._id = data[0].id;
+      console.log('✓ Acción guardada en Supabase');
+    } catch (e) { console.error('Error guardando acción:', e); }
+  }
   _planTipoSeleccionado = null;
   renderPlanAccion();
 }
 
-function deleteAccion(idx) {
+async function deleteAccion(idx) {
   if (CURRENT_SESSION.role !== 'super_admin') { alert('Solo el Super Administrador puede eliminar acciones.'); return; }
   if (!confirm('¿Eliminar definitivamente esta acción?')) return;
   if (PLANES_DATA[currentDistritoPlan]) {
+    const accion = PLANES_DATA[currentDistritoPlan].acciones[idx];
     PLANES_DATA[currentDistritoPlan].acciones.splice(idx, 1);
+    
+    if (window.sbClient && accion?._id) {
+      try {
+        await window.sbClient.from('plan_acciones').delete().eq('id', accion._id);
+        console.log('✓ Acción eliminada de Supabase');
+      } catch (e) { console.error(e); }
+    }
     renderPlanAccion();
   }
 }
 
-function savePlanComment(personId, value) {
+async function savePlanComment(personId, value) {
   personId = parseInt(personId);
   value = value.trim();
   if (!value) return;
   if (!COMENTARIOS_PLAN[personId]) COMENTARIOS_PLAN[personId] = [];
-  COMENTARIOS_PLAN[personId].push({
+  const entrada = {
     texto: value,
     fecha: new Date().toLocaleDateString('es-AR'),
     hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
     usuario: CURRENT_USER?.fullname || 'Usuario'
-  });
-  // Actualizar input para mostrar que se guardó, sin re-render completo
+  };
+  COMENTARIOS_PLAN[personId].push(entrada);
+  
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('plan_comentarios').insert([{
+        person_id: String(personId),
+        texto: value,
+        usuario: entrada.usuario,
+        fecha: entrada.fecha,
+        hora: entrada.hora
+      }]);
+      console.log('✓ Comentario guardado en Supabase');
+    } catch (e) { console.error('Error guardando comentario:', e); }
+  }
+  
   const input = document.getElementById('obs-input-' + personId);
   if (input) input.value = '';
   const lastEl = document.getElementById('obs-last-' + personId);
@@ -2555,6 +2677,45 @@ async function loadCalibrationsFromSupabase() {
   } catch (e) {
     console.error('Error cargando:', e);
   }
+  
+  // Cargar planes de acción
+  try {
+    const { data: planes } = await window.sbClient
+      .from('plan_acciones').select('*').order('created_at', { ascending: true });
+    if (planes) {
+      planes.forEach(p => {
+        if (!PLANES_DATA[p.distrito]) PLANES_DATA[p.distrito] = { acciones: [] };
+        PLANES_DATA[p.distrito].acciones.push({
+          _id: p.id,
+          accion: p.accion,
+          tipo: p.tipo,
+          fecha: p.fecha,
+          createdBy: p.created_by,
+          createdAt: new Date(p.created_at).toLocaleString('es-AR')
+        });
+      });
+      console.log(`✓ Cargadas ${planes.length} acciones de plan`);
+    }
+  } catch (e) { console.error('Error planes:', e); }
+  
+  // Cargar comentarios
+  try {
+    const { data: coms } = await window.sbClient
+      .from('plan_comentarios').select('*').order('created_at', { ascending: true });
+    if (coms) {
+      coms.forEach(c => {
+        const pid = parseInt(c.person_id);
+        if (!COMENTARIOS_PLAN[pid]) COMENTARIOS_PLAN[pid] = [];
+        COMENTARIOS_PLAN[pid].push({
+          texto: c.texto,
+          usuario: c.usuario,
+          fecha: c.fecha,
+          hora: c.hora
+        });
+      });
+      console.log(`✓ Cargados ${coms.length} comentarios`);
+    }
+  } catch (e) { console.error('Error comentarios:', e); }
 }
 
 /* ============================================================
