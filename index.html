@@ -545,6 +545,7 @@
     <div class="tab" data-tab="talent-review" onclick="switchTab('talent-review', this)">Talent Review</div>
     <div class="tab" data-tab="calibracion" onclick="switchTab('calibracion', this)">Calibración</div>
     <div class="tab" data-tab="plan-accion" onclick="switchTab('plan-accion', this)">Plan de Acción</div>
+    <div class="tab" data-tab="talent-validation" onclick="switchTab('talent-validation', this)">Talent Validation</div>
     <div class="tab" data-tab="talent-mapping" onclick="switchTab('talent-mapping', this)">Talent Mapping</div>
     <div class="tab" data-tab="data-maestro" onclick="switchTab('data-maestro', this)">Data Maestro</div>
     <div class="tab" data-tab="configuracion" onclick="switchTab('configuracion', this)">Configuración</div>
@@ -646,6 +647,23 @@
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- ============ TALENT VALIDATION ============ -->
+    <div id="tab-talent-validation" class="tab-panel">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Talent Validation</div>
+          <div class="section-sub">Validación muestral de calibraciones HRBP + VCD</div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <input type="text" id="val-tienda-search" placeholder="Buscar tienda..." oninput="searchTiendaValidation(this.value)" style="font-size:12px; padding:6px 10px; min-width:160px;">
+          <input type="text" id="val-search" placeholder="Buscar persona..." oninput="searchPersonValidation(this.value)" style="font-size:12px; padding:6px 10px; min-width:160px;">
+          <button class="btn-sm" onclick="randomTiendasValidation()" style="background:transparent; color:var(--accent); border:1px solid var(--accent);">🔀 Nueva muestra</button>
+          <button class="btn-sm" id="val-history-btn" onclick="openValidationHistory()" style="background:transparent; color:var(--text-dim); border:1px solid var(--border); display:none;">📋 Historial</button>
+        </div>
+      </div>
+      <div id="validation-content"></div>
     </div>
 
     <!-- ============ TALENT MAPPING ============ -->
@@ -975,23 +993,34 @@
    ============================================================ */
 const USERS = [
   // Super Administradores (CM)
-  { user: "gzambaglione", password: "gz123",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Giannina Zambaglione" },
-  { user: "renrique",     password: "re123",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Ruth Enrique" },
-  { user: "mfalguieres",  password: "mf123",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Mario Falguieres" },
+  { user: "gzambaglione", password: "Mt7q-Kx4w",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Giannina Zambaglione" },
+  { user: "renrique",     password: "Bn9p-Vr2h",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Ruth Enrique" },
+  { user: "mfalguieres",  password: "Yk5d-Qw8j",  role: "super_admin",    pais: "Todos",     hrbp: null, fullname: "Mario Falguieres" },
 
   // Visualización global sin edición
-  { user: "dcarnero",     password: "dc123",  role: "viewer_global",  pais: "Todos",     hrbp: null, fullname: "Damián Carnero" },
+  { user: "dcarnero",     password: "Lp3x-Hc6t",  role: "viewer_global",  pais: "Todos",     hrbp: null, fullname: "Damián Carnero" },
 
   // Visualización solo Argentina sin Configuración
-  { user: "calessandro",  password: "ca123",  role: "viewer_country_calib", pais: "Argentina", hrbp: null, fullname: "Cecilia Alessandro" },
+  { user: "calessandro",  password: "Wz4f-Nm1v",  role: "viewer_country_calib", pais: "Argentina", hrbp: null, fullname: "Cecilia Alessandro" },
 
   // Capital Humano (Admin del país)
-  { user: "ch_ar",        password: "ch123",  role: "admin_country",  pais: "Argentina", hrbp: null, fullname: "Capital Humano AR" },
+  { user: "ch_ar",        password: "Jr8s-Tb5y",  role: "admin_country",  pais: "Argentina", hrbp: null, fullname: "Capital Humano AR" },
 
   // HRBPs
-  { user: "fzangaro",     password: "fz123",  role: "hrbp",  pais: "Argentina", hrbp: "Fiamma Zangaro",     fullname: "Fiamma Zangaro" },
-  { user: "lpicon",       password: "lp123",  role: "hrbp",  pais: "Argentina", hrbp: "Lucila Picon",       fullname: "Lucila Picon" },
-  { user: "mpanebianco",  password: "mp123",  role: "hrbp",  pais: "Argentina", hrbp: "Micaela Panebianco", fullname: "Micaela Panebianco" }
+  { user: "fzangaro",     password: "Gd6m-Pf2r",  role: "hrbp",  pais: "Argentina", hrbp: "Fiamma Zangaro",     fullname: "Fiamma Zangaro" },
+  { user: "lpicon",       password: "Ux7n-Cl3w",  role: "hrbp",  pais: "Argentina", hrbp: "Lucila Picon",       fullname: "Lucila Picon" },
+  { user: "mpanebianco",  password: "Sq2k-Ev9b",  role: "hrbp",  pais: "Argentina", hrbp: "Micaela Panebianco", fullname: "Micaela Panebianco" },
+
+  // Talent Validation (acceso a pestaña Talent Validation)
+  { user: "acarlisi",     password: "Hf4j-Zd7p", role: "validator", pais: "Argentina", hrbp: null, fullname: "Agustina Carlisi" },
+  { user: "ifuentes",     password: "Rt9c-Aw3x", role: "validator", pais: "Argentina", hrbp: null, fullname: "Ignacio Fuentes" },
+
+  // VCD (solo lectura, sus tiendas)
+  { user: "odiaz",        password: "Vy6h-Mn8s", role: "vcd", pais: "Argentina", hrbp: null, vcd_name: "ORIANA DIAZ",        fullname: "Oriana Diaz" },
+  { user: "rcafiel",      password: "Bw1g-Kt5q", role: "vcd", pais: "Argentina", hrbp: null, vcd_name: "ROCIO SABRINA CAFIEL", fullname: "Rocío Cafiel" },
+
+  // VCR (solo lectura, su región)
+  { user: "fdominguez",   password: "Dn4r-Xj2v", role: "vcr", pais: "Argentina", hrbp: null, region: "Region 3", fullname: "Fabricio Dominguez" }
 ];
 
 let CURRENT_USER = null;
@@ -1163,6 +1192,15 @@ function canCalibrate() {
   return ['hrbp', 'admin_country', 'super_admin', 'viewer_country_calib'].includes(CURRENT_SESSION.role);
 }
 
+function canSeeTalentValidation() {
+  return ['super_admin', 'validator'].includes(CURRENT_SESSION.role);
+}
+
+function canEditPlanAccion() {
+  // Solo HRBP, Referente País (viewer_country_calib) y super_admin pueden editar Plan de Acción
+  return ['hrbp', 'viewer_country_calib', 'super_admin'].includes(CURRENT_SESSION.role);
+}
+
 function canUploadFile() {
   return ['super_admin', 'admin_country'].includes(CURRENT_SESSION.role);
 }
@@ -1180,7 +1218,7 @@ async function performLogin(event) {
   if (!found) { errEl.textContent = 'Usuario o contraseña incorrectos.'; return; }
   try {
     CURRENT_USER = found;
-    CURRENT_SESSION = { user: found.user, role: found.role, pais: found.pais, hrbp: found.hrbp, fullname: found.fullname };
+    CURRENT_SESSION = { user: found.user, role: found.role, pais: found.pais, hrbp: found.hrbp, vcd_name: found.vcd_name, region: found.region, fullname: found.fullname };
     try { sessionStorage.setItem('tm_session', JSON.stringify(CURRENT_SESSION)); } catch(e) {}
     await loadCalibrationsFromSupabase();
     bootApp();
@@ -1208,7 +1246,10 @@ function roleLabel(role) {
     viewer_global: 'Visualización Global',
     viewer_country: 'Visualización',
     viewer_country_calib: 'Referente País',
-    hrbp: 'HRBP'
+    hrbp: 'HRBP',
+    validator: 'Talent Validator',
+    vcd: 'VCD',
+    vcr: 'VCR'
   }[role] || role;
 }
 
@@ -1232,8 +1273,22 @@ function applyRolePermissions() {
     } else if (tab === 'data-maestro' || tab === 'talent-mapping') {
       // Data Maestro y Talent Match solo para admins
       t.style.display = canSeeConfiguracion() ? '' : 'none';
+    } else if (tab === 'talent-validation') {
+      t.style.display = canSeeTalentValidation() ? '' : 'none';
     }
   });
+  // VCD y VCR: solo lectura, oculta tabs no permitidas (mismas que HRBP, sin Configuración/Data Maestro)
+  if (CURRENT_SESSION.role === 'vcd' || CURRENT_SESSION.role === 'vcr') {
+    document.querySelectorAll('.tab').forEach(t => {
+      const tab = t.getAttribute('data-tab');
+      if (['configuracion', 'data-maestro', 'talent-mapping', 'talent-validation'].includes(tab)) {
+        t.style.display = 'none';
+      }
+    });
+  }
+  // Botón Historial Validación: solo super_admin
+  const histBtn = document.getElementById('val-history-btn');
+  if (histBtn) histBtn.style.display = CURRENT_SESSION.role === 'super_admin' ? '' : 'none';
 }
 
 /* ============================================================
@@ -1268,9 +1323,11 @@ function recalcularTodo() {
 function dataScopedToUser() {
   if (!CURRENT_SESSION) return [];
   const role = CURRENT_SESSION.role;
-  if (role === 'super_admin' || role === 'viewer_global') return EXCEL_DATA;
+  if (role === 'super_admin' || role === 'viewer_global' || role === 'validator') return EXCEL_DATA;
   if (role === 'admin_country' || role === 'viewer_country' || role === 'viewer_country_calib') return EXCEL_DATA.filter(d => d.unidad === CURRENT_SESSION.pais);
   if (role === 'hrbp') return EXCEL_DATA.filter(d => d.hrbp === CURRENT_SESSION.hrbp);
+  if (role === 'vcd') return EXCEL_DATA.filter(d => d.nombre_vcd === CURRENT_SESSION.vcd_name);
+  if (role === 'vcr') return EXCEL_DATA.filter(d => d.region === CURRENT_SESSION.region);
   return [];
 }
 
@@ -1286,6 +1343,9 @@ function switchTab(tabName, element) {
   if ((tabName === 'data-maestro' || tabName === 'talent-mapping') && !canSeeConfiguracion()) {
     alert('No tenés acceso a esta sección.'); return;
   }
+  if (tabName === 'talent-validation' && !canSeeTalentValidation()) {
+    alert('No tenés acceso a Talent Validation.'); return;
+  }
   // Plan de Acción: accesible para todos los roles (sin restricción)
 
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -1300,6 +1360,7 @@ function switchTab(tabName, element) {
   else if (tabName === 'calibracion') renderCalibration();
   else if (tabName === 'talent-review') renderTalentReview();
   else if (tabName === 'plan-accion') renderPlanAccion();
+  else if (tabName === 'talent-validation') renderTalentValidation();
   else if (tabName === 'data-maestro') renderDataMaestro();
 }
 
@@ -1835,6 +1896,561 @@ async function deleteCalibration(personId) {
   renderCalibration();
 }
 
+/* ============================================================
+   TALENT VALIDATION · Tiendas → Equipo → Persona
+   ============================================================ */
+let VALIDATION_DATA = {};           // person_id -> { resultado, usuario, fecha }
+let VALIDATION_TIENDA_DATA = {};    // tienda -> { resultado, usuario, fecha }
+let VALIDATION_PERSON_COMMENTS = {}; // person_id -> [{ texto, usuario, fecha }]
+let VALIDATION_TIENDA_COMMENTS = {}; // tienda -> [{ texto, usuario, fecha }]
+let VALIDATION_SAMPLE = [];         // 10 tiendas random
+let VALIDATION_CURRENT_VIEW = 'tiendas';
+let VALIDATION_CURRENT_TIENDA = null;
+let VALIDATION_SEARCH = '';
+let VALIDATION_TIENDA_SEARCH = '';
+let VALIDATION_SHOW_HISTORY = false;
+
+function renderTalentValidation() {
+  // Generar muestra inicial si está vacía
+  if (!VALIDATION_SAMPLE.length) {
+    generateRandomSample();
+  }
+  
+  if (VALIDATION_SHOW_HISTORY) {
+    renderValidationHistory();
+  } else if (VALIDATION_SEARCH) {
+    renderValidationSearch();
+  } else if (VALIDATION_TIENDA_SEARCH) {
+    renderValidationTiendaSearch();
+  } else if (VALIDATION_CURRENT_VIEW === 'tiendas') {
+    renderValidationTiendas();
+  } else {
+    renderValidationEquipo();
+  }
+}
+
+function generateRandomSample() {
+  const data = dataScopedToUser();
+  const tiendas = [...new Set(data.map(d => d.tienda))];
+  VALIDATION_SAMPLE = tiendas.slice().sort(() => Math.random() - 0.5).slice(0, 10);
+}
+
+function randomTiendasValidation() {
+  generateRandomSample();
+  VALIDATION_CURRENT_VIEW = 'tiendas';
+  VALIDATION_CURRENT_TIENDA = null;
+  VALIDATION_SEARCH = '';
+  VALIDATION_TIENDA_SEARCH = '';
+  VALIDATION_SHOW_HISTORY = false;
+  const inp = document.getElementById('val-search'); if (inp) inp.value = '';
+  const inp2 = document.getElementById('val-tienda-search'); if (inp2) inp2.value = '';
+  renderTalentValidation();
+}
+
+function renderValidationTiendas() {
+  const data = dataScopedToUser();
+  const container = document.getElementById('validation-content');
+  
+  let html = `<div style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">Muestra aleatoria de ${VALIDATION_SAMPLE.length} tiendas · Click en una para ver su equipo</div>`;
+  html += '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px;">';
+  
+  VALIDATION_SAMPLE.forEach(tienda => {
+    const personas = data.filter(d => d.tienda === tienda);
+    if (!personas.length) return;
+    const region = personas[0].region;
+    const val = VALIDATION_TIENDA_DATA[tienda] || {};
+    
+    // Resultado general del equipo: calcular distribución
+    let promotores = 0, neutros = 0, detractores = 0;
+    personas.forEach(p => {
+      const calib = CALIBRACION_DATA[p.id] || {};
+      const c = calib.clasificacion || p.clasificacion;
+      if (c === 'Promotor') promotores++;
+      else if (c === 'Neutro') neutros++;
+      else detractores++;
+    });
+    
+    html += `<div class="card" style="margin-bottom:0; cursor:pointer; border:1px solid ${val.resultado ? 'var(--accent)' : 'var(--border)'};" onclick="openTiendaValidation('${tienda.replace(/'/g, "\\'")}')">
+      <div style="font-family:var(--font-head); font-weight:700; font-size:14px; margin-bottom:4px;">${shortName(tienda)}</div>
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">${region} · ${personas.length} persona${personas.length !== 1 ? 's' : ''}</div>
+      <div style="display:flex; gap:6px; font-size:11px; margin-bottom:4px;">
+        <span class="badge badge-promotor">P</span>
+        <span class="badge badge-neutro">N</span>
+        <span class="badge badge-detractor">D</span>
+      </div>
+      <div style="display:flex; gap:6px; font-size:11px; color:var(--text-muted); margin-bottom:10px; padding-left:2px;">
+        <span style="min-width:22px; text-align:center;">${promotores}</span>
+        <span style="min-width:22px; text-align:center;">${neutros}</span>
+        <span style="min-width:22px; text-align:center;">${detractores}</span>
+      </div>
+      ${val.resultado ? `<div style="font-size:11px; padding:6px 8px; background:var(--surface2); border-radius:6px;"><strong>✓ ${val.resultado}</strong><div style="color:var(--text-muted); font-size:10px; margin-top:2px;">${val.usuario} · ${val.fecha}</div></div>` : '<div style="font-size:11px; color:var(--text-muted); font-style:italic;">Sin validación</div>'}
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function openTiendaValidation(tienda) {
+  VALIDATION_CURRENT_VIEW = 'equipo';
+  VALIDATION_CURRENT_TIENDA = tienda;
+  renderTalentValidation();
+}
+
+function backToTiendas() {
+  VALIDATION_CURRENT_VIEW = 'tiendas';
+  VALIDATION_CURRENT_TIENDA = null;
+  renderTalentValidation();
+}
+
+function renderValidationEquipo() {
+  const data = dataScopedToUser();
+  const tienda = VALIDATION_CURRENT_TIENDA;
+  const personas = data.filter(d => d.tienda === tienda);
+  const container = document.getElementById('validation-content');
+  const region = personas[0]?.region || '—';
+  const tval = VALIDATION_TIENDA_DATA[tienda] || {};
+  
+  let promotores = 0, neutros = 0, detractores = 0;
+  personas.forEach(p => {
+    const calib = CALIBRACION_DATA[p.id] || {};
+    const c = calib.clasificacion || p.clasificacion;
+    if (c === 'Promotor') promotores++;
+    else if (c === 'Neutro') neutros++;
+    else detractores++;
+  });
+  
+  let html = `<div style="margin-bottom:12px;"><button class="btn-sm" onclick="backToTiendas()" style="background:transparent; color:var(--accent); border:1px solid var(--accent);">← Volver a tiendas</button></div>`;
+  
+  html += `<div class="card" style="margin-bottom:14px;">
+    <div class="card-title-row">
+      <div>
+        <div style="font-family:var(--font-head); font-weight:700; font-size:18px;">${shortName(tienda)}</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">${region} · ${personas.length} persona${personas.length !== 1 ? 's' : ''}</div>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <span class="badge badge-promotor">${promotores} Promotor${promotores !== 1 ? 'es' : ''}</span>
+        <span class="badge badge-neutro">${neutros} Neutro${neutros !== 1 ? 's' : ''}</span>
+        <span class="badge badge-detractor">${detractores} Detractor${detractores !== 1 ? 'es' : ''}</span>
+      </div>
+    </div>
+    
+    <div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; margin-top:12px;">
+      <div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--text-dim); margin-bottom:8px;">Validación general del equipo</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+        <select id="val-tienda-res" onchange="saveTiendaValidation()" style="font-size:12px; padding:6px 10px;">
+          <option value="">— Seleccionar resultado —</option>
+          <option value="Confirmado" ${tval.resultado === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
+          <option value="Parcialmente alineado" ${tval.resultado === 'Parcialmente alineado' ? 'selected' : ''}>Parcialmente alineado</option>
+          <option value="No alineado" ${tval.resultado === 'No alineado' ? 'selected' : ''}>No alineado</option>
+        </select>
+        ${tval.fecha ? `<div style="font-size:10px; color:var(--text-muted);">Última validación: ${tval.fecha} · ${tval.usuario}</div>` : ''}
+      </div>
+      
+      <div style="border-top:1px solid var(--border); padding-top:10px;">
+        <div style="font-size:11px; font-weight:600; color:var(--text-dim); margin-bottom:6px;">Comentarios del equipo</div>
+        <div id="vt-list-${tienda.replace(/[^a-zA-Z0-9]/g, '_')}" style="font-size:11px; margin-bottom:8px;">
+          ${(() => {
+            const tcoms = VALIDATION_TIENDA_COMMENTS[tienda] || [];
+            if (!tcoms.length) return '<span style="color:var(--text-muted); font-style:italic;">Sin comentarios</span>';
+            const last = tcoms[tcoms.length - 1];
+            let h = `<div><span style="color:var(--text);">"${last.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${last.fecha} · ${last.usuario}</span></div>`;
+            if (tcoms.length > 1) {
+              h += `<details style="margin-top:6px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${tcoms.length})</summary><div style="margin-top:4px;">${tcoms.slice(0, -1).reverse().map(c => `<div style="padding:4px 0; border-bottom:1px dashed var(--border);">"${c.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${c.fecha} · ${c.usuario}</span></div>`).join('')}</div></details>`;
+            }
+            return h;
+          })()}
+        </div>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="vt-input" placeholder="Nuevo comentario sobre el equipo..." onkeypress="if(event.key==='Enter'){addTiendaCommentInline();}" style="font-size:12px; padding:6px 10px; flex:1; min-width:200px;">
+          <button class="btn-sm" onclick="addTiendaCommentInline()" style="background:var(--accent); color:#fff; border:1px solid var(--accent);">+ Agregar</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  
+  html += `<div class="card"><div class="card-title">Equipo de la tienda</div>
+    <div class="table-wrapper">
+      <table>
+        <thead><tr>
+          <th>Nombre</th><th>Puesto</th><th>Talent Mapping</th><th>Potencial</th><th>Calibración final</th><th>Validación</th><th>Comentarios</th>
+        </tr></thead>
+        <tbody>`;
+  personas.forEach(p => {
+    const calib = CALIBRACION_DATA[p.id] || {};
+    const resultado = calib.clasificacion || p.clasificacion;
+    const val = VALIDATION_DATA[p.id] || {};
+    const coms = VALIDATION_PERSON_COMMENTS[p.id] || [];
+    const lastCom = coms.length ? coms[coms.length - 1] : null;
+    html += `<tr>
+      <td><strong style="cursor:pointer; color:var(--accent);" onclick="openPersonDetail(${p.id})">${p.nombre}</strong></td>
+      <td>${p.rol}</td>
+      <td><span class="badge ${classBadge(p.clasificacion)}">${p.clasificacion}</span></td>
+      <td>${p.potencial}</td>
+      <td><span class="badge ${classBadge(resultado)}">${resultado}</span>${calib.clasificacion ? '<div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Calibrado</div>' : ''}</td>
+      <td>
+        <select id="val-res-${p.id}" onchange="saveValidation(${p.id})" style="font-size:11px; padding:4px;">
+          <option value="">—</option>
+          <option value="Confirmado" ${val.resultado === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
+          <option value="Parcialmente alineado" ${val.resultado === 'Parcialmente alineado' ? 'selected' : ''}>Parcialmente</option>
+          <option value="No alineado" ${val.resultado === 'No alineado' ? 'selected' : ''}>No alineado</option>
+        </select>
+      </td>
+      <td style="min-width:240px;">
+        <div id="vp-last-${p.id}" style="font-size:11px; margin-bottom:4px;">
+          ${lastCom ? `<span style="color:var(--text);">"${lastCom.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${lastCom.fecha} · ${lastCom.usuario}</span>` : '<span style="color:var(--text-muted); font-style:italic;">Sin comentarios</span>'}
+        </div>
+        ${coms.length > 1 ? `<details style="margin-bottom:4px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${coms.length})</summary><div style="font-size:11px; margin-top:4px;">${coms.slice(0, -1).reverse().map(c => `<div style="padding:4px 0; border-bottom:1px dashed var(--border);">"${c.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${c.fecha} · ${c.usuario}</span></div>`).join('')}</div></details>` : ''}
+        <div style="display:flex; gap:4px;">
+          <input type="text" id="vp-input-${p.id}" placeholder="Nuevo comentario..." onkeypress="if(event.key==='Enter'){addPersonCommentInline(${p.id});}" style="font-size:11px; padding:4px 6px; flex:1; min-width:0;">
+          <button class="btn-sm" onclick="addPersonCommentInline(${p.id})" style="background:var(--accent); color:#fff; border:1px solid var(--accent); font-size:10px; padding:3px 8px;">+</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table></div></div>';
+  container.innerHTML = html;
+}
+
+function searchPersonValidation(query) {
+  VALIDATION_SEARCH = query.trim();
+  renderTalentValidation();
+}
+
+function renderValidationSearch() {
+  const data = dataScopedToUser();
+  const q = VALIDATION_SEARCH.toLowerCase();
+  const results = data.filter(p => 
+    p.nombre.toLowerCase().includes(q) || 
+    p.rol.toLowerCase().includes(q) || 
+    p.tienda.toLowerCase().includes(q)
+  );
+  
+  const container = document.getElementById('validation-content');
+  if (!results.length) {
+    container.innerHTML = '<div class="card" style="text-align:center; color:var(--text-muted); padding:30px;">Sin resultados para "' + VALIDATION_SEARCH + '"</div>';
+    return;
+  }
+  
+  let html = `<div style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">${results.length} resultado${results.length !== 1 ? 's' : ''} para "${VALIDATION_SEARCH}"</div>`;
+  html += '<div class="card"><div class="table-wrapper"><table><thead><tr><th>Nombre</th><th>Puesto</th><th>Tienda</th><th>Clasificación</th><th>Validación</th><th>Comentarios</th></tr></thead><tbody>';
+  results.forEach(p => {
+    const calib = CALIBRACION_DATA[p.id] || {};
+    const resultado = calib.clasificacion || p.clasificacion;
+    const val = VALIDATION_DATA[p.id] || {};
+    const coms = VALIDATION_PERSON_COMMENTS[p.id] || [];
+    const lastCom = coms.length ? coms[coms.length - 1] : null;
+    html += `<tr>
+      <td><strong style="cursor:pointer; color:var(--accent);" onclick="openPersonDetail(${p.id})">${p.nombre}</strong></td>
+      <td>${p.rol}</td>
+      <td>${shortName(p.tienda)}</td>
+      <td><span class="badge ${classBadge(resultado)}">${resultado}</span></td>
+      <td>
+        <select id="val-res-${p.id}" onchange="saveValidation(${p.id})" style="font-size:11px; padding:4px;">
+          <option value="">—</option>
+          <option value="Confirmado" ${val.resultado === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
+          <option value="Parcialmente alineado" ${val.resultado === 'Parcialmente alineado' ? 'selected' : ''}>Parcialmente</option>
+          <option value="No alineado" ${val.resultado === 'No alineado' ? 'selected' : ''}>No alineado</option>
+        </select>
+      </td>
+      <td style="min-width:240px;">
+        <div id="vp-last-${p.id}" style="font-size:11px; margin-bottom:4px;">
+          ${lastCom ? `<span style="color:var(--text);">"${lastCom.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${lastCom.fecha} · ${lastCom.usuario}</span>` : '<span style="color:var(--text-muted); font-style:italic;">Sin comentarios</span>'}
+        </div>
+        ${coms.length > 1 ? `<details style="margin-bottom:4px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${coms.length})</summary><div style="font-size:11px; margin-top:4px;">${coms.slice(0, -1).reverse().map(c => `<div style="padding:4px 0; border-bottom:1px dashed var(--border);">"${c.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${c.fecha} · ${c.usuario}</span></div>`).join('')}</div></details>` : ''}
+        <div style="display:flex; gap:4px;">
+          <input type="text" id="vp-input-${p.id}" placeholder="Nuevo comentario..." onkeypress="if(event.key==='Enter'){addPersonCommentInline(${p.id});}" style="font-size:11px; padding:4px 6px; flex:1; min-width:0;">
+          <button class="btn-sm" onclick="addPersonCommentInline(${p.id})" style="background:var(--accent); color:#fff; border:1px solid var(--accent); font-size:10px; padding:3px 8px;">+</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table></div></div>';
+  container.innerHTML = html;
+}
+
+function searchTiendaValidation(query) {
+  VALIDATION_TIENDA_SEARCH = query.trim();
+  // Si hay búsqueda de tienda, anular otros estados
+  if (VALIDATION_TIENDA_SEARCH) {
+    VALIDATION_SHOW_HISTORY = false;
+    VALIDATION_CURRENT_VIEW = 'tiendas';
+  }
+  renderTalentValidation();
+}
+
+function renderValidationTiendaSearch() {
+  const data = dataScopedToUser();
+  const allTiendas = [...new Set(data.map(d => d.tienda))];
+  const q = VALIDATION_TIENDA_SEARCH.toLowerCase();
+  const matches = allTiendas.filter(t => t.toLowerCase().includes(q)).sort();
+  
+  const container = document.getElementById('validation-content');
+  if (!matches.length) {
+    container.innerHTML = '<div class="card" style="text-align:center; color:var(--text-muted); padding:30px;">Sin resultados para "' + VALIDATION_TIENDA_SEARCH + '"</div>';
+    return;
+  }
+  
+  let html = `<div style="font-size:12px; color:var(--text-dim); margin-bottom:12px;">${matches.length} tienda${matches.length !== 1 ? 's' : ''} encontrada${matches.length !== 1 ? 's' : ''} para "${VALIDATION_TIENDA_SEARCH}"</div>`;
+  html += '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:12px;">';
+  
+  matches.forEach(tienda => {
+    const personas = data.filter(d => d.tienda === tienda);
+    if (!personas.length) return;
+    const region = personas[0].region;
+    const val = VALIDATION_TIENDA_DATA[tienda] || {};
+    
+    let promotores = 0, neutros = 0, detractores = 0;
+    personas.forEach(p => {
+      const calib = CALIBRACION_DATA[p.id] || {};
+      const c = calib.clasificacion || p.clasificacion;
+      if (c === 'Promotor') promotores++;
+      else if (c === 'Neutro') neutros++;
+      else detractores++;
+    });
+    
+    html += `<div class="card" style="margin-bottom:0; cursor:pointer; border:1px solid ${val.resultado ? 'var(--accent)' : 'var(--border)'};" onclick="openTiendaValidation('${tienda.replace(/'/g, "\\'")}')">
+      <div style="font-family:var(--font-head); font-weight:700; font-size:14px; margin-bottom:4px;">${shortName(tienda)}</div>
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">${region} · ${personas.length} persona${personas.length !== 1 ? 's' : ''}</div>
+      <div style="display:flex; gap:6px; font-size:11px; margin-bottom:4px;">
+        <span class="badge badge-promotor">P</span>
+        <span class="badge badge-neutro">N</span>
+        <span class="badge badge-detractor">D</span>
+      </div>
+      <div style="display:flex; gap:6px; font-size:11px; color:var(--text-muted); margin-bottom:10px; padding-left:2px;">
+        <span style="min-width:22px; text-align:center;">${promotores}</span>
+        <span style="min-width:22px; text-align:center;">${neutros}</span>
+        <span style="min-width:22px; text-align:center;">${detractores}</span>
+      </div>
+      ${val.resultado ? `<div style="font-size:11px; padding:6px 8px; background:var(--surface2); border-radius:6px;"><strong>✓ ${val.resultado}</strong><div style="color:var(--text-muted); font-size:10px; margin-top:2px;">${val.usuario} · ${val.fecha}</div></div>` : '<div style="font-size:11px; color:var(--text-muted); font-style:italic;">Sin validación</div>'}
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function openValidationHistory() {
+  if (CURRENT_SESSION.role !== 'super_admin') return;
+  VALIDATION_SHOW_HISTORY = true;
+  VALIDATION_SEARCH = '';
+  VALIDATION_TIENDA_SEARCH = '';
+  const ps = document.getElementById('val-search'); if (ps) ps.value = '';
+  const ts = document.getElementById('val-tienda-search'); if (ts) ts.value = '';
+  renderTalentValidation();
+}
+
+function closeValidationHistory() {
+  VALIDATION_SHOW_HISTORY = false;
+  renderTalentValidation();
+}
+
+async function renderValidationHistory() {
+  const container = document.getElementById('validation-content');
+  container.innerHTML = '<div class="card" style="text-align:center; color:var(--text-muted); padding:20px;">Cargando historial...</div>';
+  
+  let validaciones = [];
+  let validacionesTienda = [];
+  let comentarios = [];
+  
+  if (window.sbClient) {
+    try {
+      const [v1, v2, v3] = await Promise.all([
+        window.sbClient.from('talent_validation').select('*').order('created_at', { ascending: false }),
+        window.sbClient.from('talent_validation_tienda').select('*').order('created_at', { ascending: false }),
+        window.sbClient.from('validation_comments').select('*').order('created_at', { ascending: false })
+      ]);
+      validaciones = v1.data || [];
+      validacionesTienda = v2.data || [];
+      comentarios = v3.data || [];
+    } catch (e) { console.error('Error historial:', e); }
+  }
+  
+  // Unificar todos los eventos en una sola lista
+  const eventos = [];
+  validaciones.forEach(v => {
+    const p = EXCEL_DATA.find(d => d.id === parseInt(v.person_id));
+    eventos.push({
+      tipo: 'Validación persona',
+      tienda: p?.tienda || '—',
+      objetivo: p?.nombre || `Persona #${v.person_id}`,
+      estado: v.resultado || '—',
+      comentario: v.comentario || '',
+      usuario: v.usuario || '—',
+      fecha: v.created_at
+    });
+  });
+  validacionesTienda.forEach(v => {
+    eventos.push({
+      tipo: 'Validación equipo',
+      tienda: v.tienda,
+      objetivo: shortName(v.tienda),
+      estado: v.resultado || '—',
+      comentario: v.comentario || '',
+      usuario: v.usuario || '—',
+      fecha: v.created_at
+    });
+  });
+  comentarios.forEach(c => {
+    let objetivo = c.target_id;
+    let tienda = '—';
+    if (c.scope === 'person') {
+      const p = EXCEL_DATA.find(d => d.id === parseInt(c.target_id));
+      objetivo = p?.nombre || `Persona #${c.target_id}`;
+      tienda = p?.tienda || '—';
+    } else if (c.scope === 'tienda') {
+      tienda = c.target_id;
+      objetivo = shortName(c.target_id);
+    }
+    eventos.push({
+      tipo: c.scope === 'person' ? 'Comentario persona' : 'Comentario equipo',
+      tienda: tienda,
+      objetivo: objetivo,
+      estado: '—',
+      comentario: c.texto || '',
+      usuario: c.usuario || '—',
+      fecha: c.created_at
+    });
+  });
+  
+  // Ordenar por fecha descendente
+  eventos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+  
+  let html = `<div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+    <div style="font-family:var(--font-head); font-weight:700; font-size:16px;">Historial completo de validaciones (${eventos.length})</div>
+    <button class="btn-sm" onclick="closeValidationHistory()" style="background:transparent; color:var(--accent); border:1px solid var(--accent);">← Volver</button>
+  </div>`;
+  
+  if (!eventos.length) {
+    html += '<div class="card" style="text-align:center; color:var(--text-muted); padding:30px;">No hay registros de validación todavía.</div>';
+    container.innerHTML = html;
+    return;
+  }
+  
+  html += '<div class="card"><div class="table-wrapper"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Tienda</th><th>Objetivo</th><th>Estado</th><th>Comentario</th><th>Usuario</th></tr></thead><tbody>';
+  eventos.forEach(e => {
+    const fechaStr = new Date(e.fecha).toLocaleString('es-AR');
+    const estadoBadge = e.estado === 'Confirmado' ? 'badge-promotor' : (e.estado === 'No alineado' ? 'badge-detractor' : (e.estado === 'Parcialmente alineado' ? 'badge-neutro' : ''));
+    html += `<tr>
+      <td style="font-size:11px; white-space:nowrap;">${fechaStr}</td>
+      <td style="font-size:11px;">${e.tipo}</td>
+      <td style="font-size:11px;">${shortName(e.tienda)}</td>
+      <td style="font-size:12px;"><strong>${e.objetivo}</strong></td>
+      <td>${e.estado !== '—' ? `<span class="badge ${estadoBadge}">${e.estado}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+      <td style="font-size:11px; max-width:300px;">${e.comentario || '<span style="color:var(--text-muted);">—</span>'}</td>
+      <td style="font-size:11px;">${e.usuario}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div></div>';
+  container.innerHTML = html;
+}
+
+async function saveValidation(personId) {
+  const resultado = document.getElementById('val-res-' + personId)?.value || '';
+  if (!resultado) return;
+  
+  const entrada = {
+    resultado: resultado,
+    usuario: CURRENT_USER.fullname,
+    fecha: new Date().toLocaleString('es-AR')
+  };
+  VALIDATION_DATA[personId] = entrada;
+  
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('talent_validation').insert([{
+        person_id: String(personId),
+        resultado: resultado,
+        comentario: '',
+        usuario: entrada.usuario
+      }]);
+      console.log('✓ Validación guardada');
+    } catch (e) { console.error('Error validación:', e); }
+  }
+}
+
+async function saveTiendaValidation() {
+  const resultado = document.getElementById('val-tienda-res')?.value || '';
+  if (!resultado) return;
+  
+  const entrada = {
+    resultado: resultado,
+    usuario: CURRENT_USER.fullname,
+    fecha: new Date().toLocaleString('es-AR')
+  };
+  VALIDATION_TIENDA_DATA[VALIDATION_CURRENT_TIENDA] = entrada;
+  
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('talent_validation_tienda').insert([{
+        tienda: VALIDATION_CURRENT_TIENDA,
+        resultado: resultado,
+        comentario: '',
+        usuario: entrada.usuario
+      }]);
+      console.log('✓ Validación tienda guardada');
+    } catch (e) { console.error('Error validación tienda:', e); }
+  }
+}
+
+/* ============================================================
+   COMENTARIOS DE VALIDACIÓN (inline)
+   ============================================================ */
+async function addPersonCommentInline(personId) {
+  const input = document.getElementById('vp-input-' + personId);
+  if (!input) return;
+  const texto = input.value.trim();
+  if (!texto) return;
+  
+  const entrada = {
+    texto: texto,
+    usuario: CURRENT_USER.fullname,
+    fecha: new Date().toLocaleString('es-AR')
+  };
+  if (!VALIDATION_PERSON_COMMENTS[personId]) VALIDATION_PERSON_COMMENTS[personId] = [];
+  VALIDATION_PERSON_COMMENTS[personId].push(entrada);
+  
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('validation_comments').insert([{
+        scope: 'person',
+        target_id: String(personId),
+        texto: texto,
+        usuario: entrada.usuario
+      }]);
+      console.log('✓ Comentario persona guardado');
+    } catch (e) { console.error('Error comentario persona:', e); }
+  }
+  renderTalentValidation();
+}
+
+async function addTiendaCommentInline() {
+  const input = document.getElementById('vt-input');
+  if (!input) return;
+  const texto = input.value.trim();
+  if (!texto) return;
+  const tienda = VALIDATION_CURRENT_TIENDA;
+  
+  const entrada = {
+    texto: texto,
+    usuario: CURRENT_USER.fullname,
+    fecha: new Date().toLocaleString('es-AR')
+  };
+  if (!VALIDATION_TIENDA_COMMENTS[tienda]) VALIDATION_TIENDA_COMMENTS[tienda] = [];
+  VALIDATION_TIENDA_COMMENTS[tienda].push(entrada);
+  
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('validation_comments').insert([{
+        scope: 'tienda',
+        target_id: tienda,
+        texto: texto,
+        usuario: entrada.usuario
+      }]);
+      console.log('✓ Comentario tienda guardado');
+    } catch (e) { console.error('Error comentario tienda:', e); }
+  }
+  renderTalentValidation();
+}
+
 function openPersonDetail(personId) {
   const p = EXCEL_DATA.find(d => d.id === personId);
   if (!p) return;
@@ -2103,7 +2719,7 @@ function renderPlanAccion() {
 
       ${accionesHTML}
 
-      <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+      <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); ${canEditPlanAccion() ? '' : 'display:none;'}">
         <div style="flex: 1; min-width: 200px;">
           <label class="field-label">Nueva acción concreta <span style="color:var(--detractor);">*</span></label>
           <input type="text" id="plan-nueva-accion" placeholder="Describí la acción a realizar...">
@@ -2137,7 +2753,7 @@ function renderPlanAccion() {
       ${det === 0 ? '<div class="no-data" style="padding:10px;">Sin detractores 🎉</div>' :
         '<div class="table-wrapper" style="margin-bottom:12px;"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Score</th><th>Observaciones</th></tr></thead><tbody>' +
         data.filter(d => clasifFinal(d) === "Detractor").map(d =>
-          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div><div style="display:flex;gap:4px;"><input type="text" id="obs-input-${d.id}" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment(${d.id},document.getElementById('obs-input-'+${d.id}).value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
+          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div>${canEditPlanAccion()?'<div style="display:flex;gap:4px;"><input type="text" id="obs-input-'+d.id+'" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment('+d.id+',document.getElementById(\'obs-input-'+d.id+'\').value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>':''}${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
         ).join('') + '</tbody></table></div>'}
       <div style="margin-bottom: 8px;">
         <strong style="color: var(--neutro); font-size: 12px;">Neutros (${neu})</strong>
@@ -2145,7 +2761,7 @@ function renderPlanAccion() {
       ${neu === 0 ? '<div class="no-data" style="padding:10px;">Sin neutros</div>' :
         '<div class="table-wrapper" style="margin-bottom:12px;"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Score</th><th>Observaciones</th></tr></thead><tbody>' +
         data.filter(d => clasifFinal(d) === "Neutro").map(d =>
-          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div><div style="display:flex;gap:4px;"><input type="text" id="obs-input-${d.id}" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment(${d.id},document.getElementById('obs-input-'+${d.id}).value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
+          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div>${canEditPlanAccion()?'<div style="display:flex;gap:4px;"><input type="text" id="obs-input-'+d.id+'" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment('+d.id+',document.getElementById(\'obs-input-'+d.id+'\').value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>':''}${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
         ).join('') + '</tbody></table></div>'}
       <div style="margin-bottom: 8px;">
         <strong style="color: var(--promotor); font-size: 12px;">Promotores (${pro})</strong>
@@ -2153,7 +2769,7 @@ function renderPlanAccion() {
       ${pro === 0 ? '<div class="no-data" style="padding:10px;">Sin promotores</div>' :
         '<div class="table-wrapper"><table><thead><tr><th>Nombre</th><th>Rol</th><th>Tienda</th><th>Score</th><th>Observaciones</th></tr></thead><tbody>' +
         data.filter(d => clasifFinal(d) === "Promotor").map(d =>
-          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div><div style="display:flex;gap:4px;"><input type="text" id="obs-input-${d.id}" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment(${d.id},document.getElementById('obs-input-'+${d.id}).value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
+          `<tr><td>${d.nombre}</td><td>${d.rol}</td><td>${shortName(d.tienda)}</td><td>${d.score.toFixed(2)}</td><td><div style="min-width:240px;"><div id="obs-last-${d.id}" style="font-size:11px;margin-bottom:4px;min-height:16px;">${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||!h.length)return '<span style=\'color:var(--text-muted);font-style:italic;font-size:10px;\'>Sin observaciones</span>';const l=h[h.length-1];return '<span style=\'color:var(--text);\'>"'+l.texto+'"</span> <span style=\'color:var(--text-muted);font-size:10px;\'>' + l.fecha + ' ' + l.hora + ' · ' + l.usuario + '</span>'})()}</div>${canEditPlanAccion()?'<div style="display:flex;gap:4px;"><input type="text" id="obs-input-'+d.id+'" placeholder="Nueva observación..." style="min-width:unset;flex:1;font-size:11px;padding:4px 8px;"><button onclick="savePlanComment('+d.id+',document.getElementById(\'obs-input-'+d.id+'\').value)" style="padding:4px 8px;font-size:10px;white-space:nowrap;">Guardar</button></div>':''}${(()=>{const h=COMENTARIOS_PLAN[d.id];if(!h||h.length<2)return '';return '<details style=\'margin-top:4px;\'><summary style=\'font-size:10px;color:var(--accent);cursor:pointer;\'>'+h.length+' observaciones</summary><div style=\'font-size:10px;color:var(--text-dim);margin-top:4px;\'>'+h.slice().reverse().map(e=>'<div style=\'padding:2px 0;border-bottom:1px solid var(--border);\'>'+e.fecha+' '+e.hora+' · '+e.usuario+': "'+e.texto+'"</div>').join('')+'</div></details>'})()}</div></td></tr>`
         ).join('') + '</tbody></table></div>'}
     </div>
   `;
@@ -2168,6 +2784,7 @@ function selectPlanTipo(el, tipo) {
 }
 
 async function addAccion() {
+  if (!canEditPlanAccion()) { alert('No tenés permisos para editar el Plan de Acción.'); return; }
   const accion = document.getElementById('plan-nueva-accion')?.value.trim();
   const fecha  = document.getElementById('plan-nueva-fecha')?.value || '';
   if (!accion) { alert('La acción concreta es obligatoria.'); return; }
@@ -2220,6 +2837,7 @@ async function deleteAccion(idx) {
 }
 
 async function savePlanComment(personId, value) {
+  if (!canEditPlanAccion()) { alert('No tenés permisos para editar el Plan de Acción.'); return; }
   personId = parseInt(personId);
   value = value.trim();
   if (!value) return;
@@ -2716,6 +3334,65 @@ async function loadCalibrationsFromSupabase() {
       console.log(`✓ Cargados ${coms.length} comentarios`);
     }
   } catch (e) { console.error('Error comentarios:', e); }
+  
+  // Cargar validaciones
+  try {
+    const { data: vals } = await window.sbClient
+      .from('talent_validation').select('*').order('created_at', { ascending: true });
+    if (vals) {
+      vals.forEach(v => {
+        const pid = parseInt(v.person_id);
+        VALIDATION_DATA[pid] = {
+          resultado: v.resultado,
+          comentario: v.comentario,
+          usuario: v.usuario,
+          fecha: new Date(v.created_at).toLocaleString('es-AR')
+        };
+      });
+      console.log(`✓ Cargadas ${vals.length} validaciones`);
+    }
+  } catch (e) { console.error('Error validaciones:', e); }
+  
+  // Cargar validaciones de tienda
+  try {
+    const { data: tvals } = await window.sbClient
+      .from('talent_validation_tienda').select('*').order('created_at', { ascending: true });
+    if (tvals) {
+      tvals.forEach(v => {
+        VALIDATION_TIENDA_DATA[v.tienda] = {
+          resultado: v.resultado,
+          comentario: v.comentario,
+          usuario: v.usuario,
+          fecha: new Date(v.created_at).toLocaleString('es-AR')
+        };
+      });
+      console.log(`✓ Cargadas ${tvals.length} validaciones de tienda`);
+    }
+  } catch (e) { console.error('Error validaciones tienda:', e); }
+  
+  // Cargar comentarios de validación (persona + tienda)
+  try {
+    const { data: vcoms } = await window.sbClient
+      .from('validation_comments').select('*').order('created_at', { ascending: true });
+    if (vcoms) {
+      vcoms.forEach(c => {
+        const entrada = {
+          texto: c.texto,
+          usuario: c.usuario,
+          fecha: new Date(c.created_at).toLocaleString('es-AR')
+        };
+        if (c.scope === 'person') {
+          const pid = parseInt(c.target_id);
+          if (!VALIDATION_PERSON_COMMENTS[pid]) VALIDATION_PERSON_COMMENTS[pid] = [];
+          VALIDATION_PERSON_COMMENTS[pid].push(entrada);
+        } else if (c.scope === 'tienda') {
+          if (!VALIDATION_TIENDA_COMMENTS[c.target_id]) VALIDATION_TIENDA_COMMENTS[c.target_id] = [];
+          VALIDATION_TIENDA_COMMENTS[c.target_id].push(entrada);
+        }
+      });
+      console.log(`✓ Cargados ${vcoms.length} comentarios de validación`);
+    }
+  } catch (e) { console.error('Error comentarios validación:', e); }
 }
 
 /* ============================================================
