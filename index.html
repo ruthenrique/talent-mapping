@@ -2043,6 +2043,7 @@ function renderValidationEquipo() {
           <option value="Parcialmente alineado" ${tval.resultado === 'Parcialmente alineado' ? 'selected' : ''}>Parcialmente alineado</option>
           <option value="No alineado" ${tval.resultado === 'No alineado' ? 'selected' : ''}>No alineado</option>
         </select>
+        ${CURRENT_SESSION.role === 'super_admin' && tval.resultado ? `<button class="btn-sm" onclick="deleteTiendaValidation('${tienda.replace(/'/g, "\\'")}')" style="background:transparent; color:var(--detractor); border:1px solid var(--detractor-border); font-size:10px; padding:4px 8px;">✕ Eliminar validación</button>` : ''}
         ${tval.fecha ? `<div style="font-size:10px; color:var(--text-muted);">Última validación: ${tval.fecha} · ${tval.usuario}</div>` : ''}
       </div>
       
@@ -2053,9 +2054,12 @@ function renderValidationEquipo() {
             const tcoms = VALIDATION_TIENDA_COMMENTS[tienda] || [];
             if (!tcoms.length) return '<span style="color:var(--text-muted); font-style:italic;">Sin comentarios</span>';
             const last = tcoms[tcoms.length - 1];
-            let h = `<div><span style="color:var(--text);">"${last.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${last.fecha} · ${last.usuario}</span></div>`;
+            const tiendaEsc = tienda.replace(/'/g, "\\'");
+            const isSA = CURRENT_SESSION.role === 'super_admin';
+            const delLastBtn = isSA ? ` <button onclick="deleteTiendaComment('${tiendaEsc}',${tcoms.length-1})" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);font-size:9px;padding:1px 5px;margin-left:4px;border-radius:4px;cursor:pointer;">✕</button>` : '';
+            let h = `<div><span style="color:var(--text);">"${last.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${last.fecha} · ${last.usuario}</span>${delLastBtn}</div>`;
             if (tcoms.length > 1) {
-              h += `<details style="margin-top:6px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${tcoms.length})</summary><div style="margin-top:4px;">${tcoms.slice(0, -1).reverse().map(c => `<div style="padding:4px 0; border-bottom:1px dashed var(--border);">"${c.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${c.fecha} · ${c.usuario}</span></div>`).join('')}</div></details>`;
+              h += `<details style="margin-top:6px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${tcoms.length})</summary><div style="margin-top:4px;">${tcoms.slice(0, -1).reverse().map((c,i) => { const oi=tcoms.length-2-i; const db=isSA?`<button onclick="deleteTiendaComment('${tiendaEsc}',${oi})" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);font-size:9px;padding:1px 5px;border-radius:4px;cursor:pointer;flex-shrink:0;">✕</button>`:''; return `<div style="padding:4px 0; border-bottom:1px dashed var(--border); display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>"${c.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${c.fecha} · ${c.usuario}</span></span>${db}</div>`; }).join('')}</div></details>`;
             }
             return h;
           })()}
@@ -2097,12 +2101,13 @@ function renderValidationEquipo() {
       </td>
       <td style="min-width:240px;">
         <div id="vp-last-${p.id}" style="font-size:11px; margin-bottom:4px;">
-          ${lastCom ? `<span style="color:var(--text);">"${lastCom.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${lastCom.fecha} · ${lastCom.usuario}</span>` : '<span style="color:var(--text-muted); font-style:italic;">Sin comentarios</span>'}
+          ${lastCom ? `<span style="color:var(--text);">"${lastCom.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${lastCom.fecha} · ${lastCom.usuario}</span>${CURRENT_SESSION.role === 'super_admin' ? ` <button onclick="deletePersonValidationComment(${p.id},${coms.length-1})" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);font-size:9px;padding:1px 5px;margin-left:4px;border-radius:4px;cursor:pointer;">✕</button>` : ''}` : '<span style="color:var(--text-muted); font-style:italic;">Sin comentarios</span>'}
         </div>
-        ${coms.length > 1 ? `<details style="margin-bottom:4px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${coms.length})</summary><div style="font-size:11px; margin-top:4px;">${coms.slice(0, -1).reverse().map(c => `<div style="padding:4px 0; border-bottom:1px dashed var(--border);">"${c.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${c.fecha} · ${c.usuario}</span></div>`).join('')}</div></details>` : ''}
+        ${coms.length > 1 ? `<details style="margin-bottom:4px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${coms.length})</summary><div style="font-size:11px; margin-top:4px;">${coms.slice(0, -1).reverse().map((cc,ii) => { const oi=coms.length-2-ii; const db=CURRENT_SESSION.role==='super_admin'?`<button onclick="deletePersonValidationComment(${p.id},${oi})" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);font-size:9px;padding:1px 5px;border-radius:4px;cursor:pointer;flex-shrink:0;">✕</button>`:''; return `<div style="padding:4px 0; border-bottom:1px dashed var(--border); display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>"${cc.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${cc.fecha} · ${cc.usuario}</span></span>${db}</div>`; }).join('')}</div></details>` : ''}
         <div style="display:flex; gap:4px;">
           <input type="text" id="vp-input-${p.id}" placeholder="Nuevo comentario..." onkeypress="if(event.key==='Enter'){addPersonCommentInline(${p.id});}" style="font-size:11px; padding:4px 6px; flex:1; min-width:0;">
           <button class="btn-sm" onclick="addPersonCommentInline(${p.id})" style="background:var(--accent); color:#fff; border:1px solid var(--accent); font-size:10px; padding:3px 8px;">+</button>
+          ${CURRENT_SESSION.role === 'super_admin' && val.resultado ? `<button class="btn-sm" onclick="deletePersonValidation(${p.id})" title="Eliminar validación" style="background:transparent; color:var(--detractor); border:1px solid var(--detractor-border); font-size:10px; padding:3px 6px;">✕ Val.</button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -2154,12 +2159,13 @@ function renderValidationSearch() {
       </td>
       <td style="min-width:240px;">
         <div id="vp-last-${p.id}" style="font-size:11px; margin-bottom:4px;">
-          ${lastCom ? `<span style="color:var(--text);">"${lastCom.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${lastCom.fecha} · ${lastCom.usuario}</span>` : '<span style="color:var(--text-muted); font-style:italic;">Sin comentarios</span>'}
+          ${lastCom ? `<span style="color:var(--text);">"${lastCom.texto}"</span> <span style="color:var(--text-muted); font-size:10px;">${lastCom.fecha} · ${lastCom.usuario}</span>${CURRENT_SESSION.role === 'super_admin' ? ` <button onclick="deletePersonValidationComment(${p.id},${coms.length-1})" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);font-size:9px;padding:1px 5px;margin-left:4px;border-radius:4px;cursor:pointer;">✕</button>` : ''}` : '<span style="color:var(--text-muted); font-style:italic;">Sin comentarios</span>'}
         </div>
-        ${coms.length > 1 ? `<details style="margin-bottom:4px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${coms.length})</summary><div style="font-size:11px; margin-top:4px;">${coms.slice(0, -1).reverse().map(c => `<div style="padding:4px 0; border-bottom:1px dashed var(--border);">"${c.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${c.fecha} · ${c.usuario}</span></div>`).join('')}</div></details>` : ''}
+        ${coms.length > 1 ? `<details style="margin-bottom:4px;"><summary style="font-size:10px; color:var(--accent); cursor:pointer;">Ver historial (${coms.length})</summary><div style="font-size:11px; margin-top:4px;">${coms.slice(0, -1).reverse().map((cc,ii) => { const oi=coms.length-2-ii; const db=CURRENT_SESSION.role==='super_admin'?`<button onclick="deletePersonValidationComment(${p.id},${oi})" style="background:transparent;color:var(--detractor);border:1px solid var(--detractor-border);font-size:9px;padding:1px 5px;border-radius:4px;cursor:pointer;flex-shrink:0;">✕</button>`:''; return `<div style="padding:4px 0; border-bottom:1px dashed var(--border); display:flex; justify-content:space-between; align-items:center; gap:6px;"><span>"${cc.texto}"<br><span style="color:var(--text-muted); font-size:10px;">${cc.fecha} · ${cc.usuario}</span></span>${db}</div>`; }).join('')}</div></details>` : ''}
         <div style="display:flex; gap:4px;">
           <input type="text" id="vp-input-${p.id}" placeholder="Nuevo comentario..." onkeypress="if(event.key==='Enter'){addPersonCommentInline(${p.id});}" style="font-size:11px; padding:4px 6px; flex:1; min-width:0;">
           <button class="btn-sm" onclick="addPersonCommentInline(${p.id})" style="background:var(--accent); color:#fff; border:1px solid var(--accent); font-size:10px; padding:3px 8px;">+</button>
+          ${CURRENT_SESSION.role === 'super_admin' && val.resultado ? `<button class="btn-sm" onclick="deletePersonValidation(${p.id})" title="Eliminar validación" style="background:transparent; color:var(--detractor); border:1px solid var(--detractor-border); font-size:10px; padding:3px 6px;">✕ Val.</button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -2410,12 +2416,13 @@ async function addPersonCommentInline(personId) {
   
   if (window.sbClient) {
     try {
-      await window.sbClient.from('validation_comments').insert([{
+      const { data } = await window.sbClient.from('validation_comments').insert([{
         scope: 'person',
         target_id: String(personId),
         texto: texto,
         usuario: entrada.usuario
-      }]);
+      }]).select();
+      if (data && data[0]) entrada._id = data[0].id;
       console.log('✓ Comentario persona guardado');
     } catch (e) { console.error('Error comentario persona:', e); }
   }
@@ -2439,14 +2446,131 @@ async function addTiendaCommentInline() {
   
   if (window.sbClient) {
     try {
-      await window.sbClient.from('validation_comments').insert([{
+      const { data } = await window.sbClient.from('validation_comments').insert([{
         scope: 'tienda',
         target_id: tienda,
         texto: texto,
         usuario: entrada.usuario
-      }]);
+      }]).select();
+      if (data && data[0]) entrada._id = data[0].id;
       console.log('✓ Comentario tienda guardado');
     } catch (e) { console.error('Error comentario tienda:', e); }
+  }
+  renderTalentValidation();
+}
+
+async function deletePersonValidationComment(personId, idx) {
+  if (CURRENT_SESSION.role !== 'super_admin') { alert('Solo el Super Administrador puede eliminar.'); return; }
+  if (!confirm('¿Eliminar este comentario definitivamente?')) return;
+  const arr = VALIDATION_PERSON_COMMENTS[personId];
+  if (!arr || !arr[idx]) return;
+  const com = arr[idx];
+  arr.splice(idx, 1);
+  if (window.sbClient) {
+    try {
+      if (com._id) {
+        await window.sbClient.from('validation_comments').delete().eq('id', com._id);
+      } else {
+        await window.sbClient.from('validation_comments').delete()
+          .eq('scope', 'person').eq('target_id', String(personId))
+          .eq('texto', com.texto).eq('usuario', com.usuario);
+      }
+      console.log('✓ Comentario persona eliminado');
+    } catch (e) { console.error('Error eliminando comentario:', e); }
+  }
+  renderTalentValidation();
+}
+
+async function deleteTiendaComment(tienda, idx) {
+  if (CURRENT_SESSION.role !== 'super_admin') { alert('Solo el Super Administrador puede eliminar.'); return; }
+  if (!confirm('¿Eliminar este comentario definitivamente?')) return;
+  const arr = VALIDATION_TIENDA_COMMENTS[tienda];
+  if (!arr || !arr[idx]) return;
+  const com = arr[idx];
+  arr.splice(idx, 1);
+  if (window.sbClient) {
+    try {
+      if (com._id) {
+        await window.sbClient.from('validation_comments').delete().eq('id', com._id);
+      } else {
+        await window.sbClient.from('validation_comments').delete()
+          .eq('scope', 'tienda').eq('target_id', tienda)
+          .eq('texto', com.texto).eq('usuario', com.usuario);
+      }
+      console.log('✓ Comentario tienda eliminado');
+    } catch (e) { console.error('Error eliminando comentario:', e); }
+  }
+  renderTalentValidation();
+}
+
+async function deletePersonValidation(personId) {
+  if (CURRENT_SESSION.role !== 'super_admin') { alert('Solo el Super Administrador puede eliminar.'); return; }
+  if (!confirm('¿Eliminar la validación de esta persona?')) return;
+  delete VALIDATION_DATA[personId];
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('talent_validation').delete().eq('person_id', String(personId));
+      console.log('✓ Validación persona eliminada');
+    } catch (e) { console.error('Error eliminando validación:', e); }
+  }
+  renderTalentValidation();
+}
+
+async function deleteTiendaValidation(tienda) {
+  if (CURRENT_SESSION.role !== 'super_admin') { alert('Solo el Super Administrador puede eliminar.'); return; }
+  if (!confirm('¿Eliminar la validación del equipo?')) return;
+  delete VALIDATION_TIENDA_DATA[tienda];
+  if (window.sbClient) {
+    try {
+      await window.sbClient.from('talent_validation_tienda').delete().eq('tienda', tienda);
+      console.log('✓ Validación tienda eliminada');
+    } catch (e) { console.error('Error eliminando validación tienda:', e); }
+  }
+  renderTalentValidation();
+}
+
+async function editValidationComment(scope, targetKey, idx) {
+  const arr = scope === 'person' ? VALIDATION_PERSON_COMMENTS[targetKey] : VALIDATION_TIENDA_COMMENTS[targetKey];
+  if (!arr || !arr[idx]) return;
+  const c = arr[idx];
+  // Solo super_admin o el autor pueden editar
+  if (CURRENT_SESSION.role !== 'super_admin' && c.usuario !== CURRENT_USER.fullname) {
+    alert('Solo podés editar tus propios comentarios.'); return;
+  }
+  const nuevoTexto = prompt('Editar comentario:', c.texto);
+  if (nuevoTexto === null) return;
+  const trimmed = nuevoTexto.trim();
+  if (!trimmed) return;
+  
+  c.texto = trimmed;
+  c.fecha = new Date().toLocaleString('es-AR') + ' (editado)';
+  
+  if (window.sbClient && c._id) {
+    try {
+      await window.sbClient.from('validation_comments').update({ texto: trimmed }).eq('id', c._id);
+      console.log('✓ Comentario editado en Supabase');
+    } catch (e) { console.error('Error editando:', e); }
+  }
+  renderTalentValidation();
+}
+
+async function deleteValidationComment(scope, targetKey, idx) {
+  const arr = scope === 'person' ? VALIDATION_PERSON_COMMENTS[targetKey] : VALIDATION_TIENDA_COMMENTS[targetKey];
+  if (!arr || !arr[idx]) return;
+  const c = arr[idx];
+  // Solo super_admin o el autor pueden eliminar
+  if (CURRENT_SESSION.role !== 'super_admin' && c.usuario !== CURRENT_USER.fullname) {
+    alert('Solo podés eliminar tus propios comentarios.'); return;
+  }
+  if (!confirm('¿Eliminar este comentario definitivamente?')) return;
+  
+  arr.splice(idx, 1);
+  
+  if (window.sbClient && c._id) {
+    try {
+      await window.sbClient.from('validation_comments').delete().eq('id', c._id);
+      console.log('✓ Comentario eliminado de Supabase');
+    } catch (e) { console.error('Error eliminando:', e); }
   }
   renderTalentValidation();
 }
@@ -2826,10 +2950,22 @@ async function deleteAccion(idx) {
     const accion = PLANES_DATA[currentDistritoPlan].acciones[idx];
     PLANES_DATA[currentDistritoPlan].acciones.splice(idx, 1);
     
-    if (window.sbClient && accion?._id) {
+    if (window.sbClient && accion) {
       try {
-        await window.sbClient.from('plan_acciones').delete().eq('id', accion._id);
-        console.log('✓ Acción eliminada de Supabase');
+        let resp;
+        if (accion._id) {
+          resp = await window.sbClient.from('plan_acciones').delete().eq('id', accion._id);
+        } else {
+          // Fallback: borrar por combinación de campos cuando no se persistió el id
+          resp = await window.sbClient.from('plan_acciones').delete()
+            .eq('distrito', currentDistritoPlan)
+            .eq('accion', accion.accion)
+            .eq('tipo', accion.tipo)
+            .eq('fecha', accion.fecha)
+            .eq('created_by', accion.createdBy);
+        }
+        if (resp && resp.error) console.error('Error eliminando acción:', resp.error);
+        else console.log('✓ Acción eliminada de Supabase');
       } catch (e) { console.error(e); }
     }
     renderPlanAccion();
@@ -2886,13 +3022,14 @@ async function deletePlanComment(personId, idx) {
   if (window.sbClient) {
     try {
       // Buscar por person_id + texto + usuario + fecha + hora (no tenemos id de fila guardado)
-      await window.sbClient.from('plan_comentarios').delete()
+      const resp = await window.sbClient.from('plan_comentarios').delete()
         .eq('person_id', String(personId))
         .eq('texto', com.texto)
         .eq('usuario', com.usuario)
         .eq('fecha', com.fecha)
         .eq('hora', com.hora);
-      console.log('✓ Comentario eliminado de Supabase');
+      if (resp && resp.error) console.error('Error eliminando comentario:', resp.error);
+      else console.log('✓ Comentario eliminado de Supabase');
     } catch (e) { console.error('Error eliminando comentario:', e); }
   }
   renderPlanAccion();
@@ -3402,6 +3539,7 @@ async function loadCalibrationsFromSupabase() {
     if (vcoms) {
       vcoms.forEach(c => {
         const entrada = {
+          _id: c.id,
           texto: c.texto,
           usuario: c.usuario,
           fecha: new Date(c.created_at).toLocaleString('es-AR')
