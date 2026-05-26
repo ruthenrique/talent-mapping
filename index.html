@@ -545,6 +545,7 @@
     <div class="tab" data-tab="talent-review" onclick="switchTab('talent-review', this)">Talent Review</div>
     <div class="tab" data-tab="calibracion" onclick="switchTab('calibracion', this)">Calibración</div>
     <div class="tab" data-tab="plan-accion" onclick="switchTab('plan-accion', this)">Plan de Acción</div>
+    <div class="tab" data-tab="about-tm" onclick="switchTab('about-tm', this)">About Talent Mapping</div>
     <div class="tab" data-tab="talent-validation" onclick="switchTab('talent-validation', this)">Talent Validation</div>
     <div class="tab" data-tab="talent-mapping" onclick="switchTab('talent-mapping', this)">Talent Mapping</div>
     <div class="tab" data-tab="data-maestro" onclick="switchTab('data-maestro', this)">Data Maestro</div>
@@ -647,6 +648,11 @@
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- ============ ABOUT TALENT MAPPING ============ -->
+    <div id="tab-about-tm" class="tab-panel">
+      <div id="about-tm-content"></div>
     </div>
 
     <!-- ============ TALENT VALIDATION ============ -->
@@ -1360,6 +1366,7 @@ function switchTab(tabName, element) {
   else if (tabName === 'calibracion') renderCalibration();
   else if (tabName === 'talent-review') renderTalentReview();
   else if (tabName === 'plan-accion') renderPlanAccion();
+  else if (tabName === 'about-tm') renderAboutTM();
   else if (tabName === 'talent-validation') renderTalentValidation();
   else if (tabName === 'data-maestro') renderDataMaestro();
 }
@@ -1909,6 +1916,250 @@ let VALIDATION_CURRENT_TIENDA = null;
 let VALIDATION_SEARCH = '';
 let VALIDATION_TIENDA_SEARCH = '';
 let VALIDATION_SHOW_HISTORY = false;
+
+/* ============================================================
+   ABOUT TALENT MAPPING
+   ============================================================ */
+let ABOUT_TM_TAB = 'que-es';
+let ABOUT_TM_FLOW_DIM = 'Talent Match';
+
+const TM_DIMENSIONES = [
+  { key: 'Talent Match', icon: '✨', pregunta: '¿Refleja una actitud cercana, positiva y auténtica?',
+    chips: ['Espontánea', 'Flexible', 'Estilo propio', 'Alegre'],
+    enTienda: 'Genera conexiones naturales, refleja la marca en su imagen, transmite entusiasmo.',
+    pista: 'Conexión genuina con clientes y con la cultura.',
+    flow: { conducta: 'Sonríe espontáneamente y propone alternativas', evidencia: 'Saluda al cliente en los primeros 10 seg', dato: 'Score Talent Match alto', insight: 'Es promotor del modelo de relación', accion: 'Posicionar como referente del equipo' } },
+  { key: 'Imagen', icon: '👗', pregunta: '¿Refleja interés con la moda, tendencias y presentación personal?',
+    chips: ['Tendencias', 'Cuidado personal', 'Afinidad marca', 'Estética'],
+    enTienda: 'Imagen alineada al universo visual de la marca, conoce y aplica tendencias.',
+    pista: 'Encarna la propuesta estética de la marca.',
+    flow: { conducta: 'Cuida su imagen y conoce tendencias', evidencia: 'Look coherente con la marca todos los días', dato: 'Score Imagen', insight: 'Referente visual del equipo', accion: 'Asignar a campañas y aperturas' } },
+  { key: 'Gestión', icon: '📊', pregunta: '¿Cómo evaluarías su desempeño en tienda (producto, VM, indicadores, procesos) para alcanzar resultados?',
+    chips: ['Producto', 'Visual Merch.', 'Indicadores', 'Procesos'],
+    enTienda: 'Gestiona indicadores clave, integra canales omnicanal, propone acciones de mejora.',
+    pista: 'Capacidad de impacto en resultados del negocio.',
+    flow: { conducta: 'Monitorea indicadores y propone acciones', evidencia: 'Toma decisiones basadas en datos', dato: 'Score Gestión', insight: 'Perfil con potencial operativo', accion: 'Considerar para promoción a SEM/ATEC' } },
+  { key: 'Soft Skills', icon: '💬', pregunta: '¿Cómo evaluarías su comunicación, trabajo en equipo y adaptación al cambio?',
+    chips: ['Comunicación', 'Equipo', 'Adaptación', 'Liderazgo'],
+    enTienda: 'Comunica con claridad, lidera con cercanía, se adapta a nuevos desafíos.',
+    pista: 'Pilar de cohesión y crecimiento del equipo.',
+    flow: { conducta: 'Se adapta y comunica con claridad', evidencia: 'Resuelve conflictos sin escalar', dato: 'Score Soft Skills', insight: 'Liderazgo natural emergente', accion: 'Mentoreo de nuevos ingresos' } },
+  { key: 'Customer Experience', icon: '🤝', pregunta: '¿Cómo evaluarías la experiencia que genera en el cliente según el modelo SSS (sonríe, saluda, soluciona)?',
+    chips: ['Sonríe', 'Saluda', 'Soluciona', 'Escucha activa'],
+    enTienda: 'Anticipa necesidades, escucha activamente, personaliza cada interacción.',
+    pista: 'Generador de loyalty y recompra.',
+    flow: { conducta: 'Escucha activa y empatía', evidencia: 'Clientes vuelven y la recuerdan', dato: 'Score CX + recompra', insight: 'Driver de loyalty en tienda', accion: 'Reconocer y replicar buenas prácticas' } },
+  { key: 'Cultura', icon: '🌱', pregunta: '¿Cómo evaluarías en qué medida refleja y promueve los valores de la compañía en su día a día?',
+    chips: ['Valores', 'Engagement', 'Embajadora', 'Coherencia'],
+    enTienda: 'Vive los valores, embajadora de marca, promueve clima sano.',
+    pista: 'Multiplicador cultural del equipo.',
+    flow: { conducta: 'Embajadora natural de la marca', evidencia: 'Otros la siguen y replican', dato: 'Score Cultura', insight: 'Engagement alto sostenido', accion: 'Incluir en proyectos transversales' } }
+];
+
+const TM_OBJETIVOS = [
+  { titulo: 'Detectar perfiles potenciales', desc: 'Identificar quienes tienen capacidad de crecimiento dentro de la organización.', icon: '🔍' },
+  { titulo: 'Matchear con la identidad de marca', desc: 'Evaluar la alineación de cada persona con los valores y estilo de nuestras marcas.', icon: '💎' },
+  { titulo: 'Impulsar planes de acción', desc: 'Diseñar estrategias de desarrollo personalizadas por dimensión.', icon: '🚀' }
+];
+
+const TM_IMPACTO = [
+  { num: '01', titulo: 'Recompra y Loyalty', desc: 'La actitud en tienda impulsa frecuencia de compra y upselling.' },
+  { num: '02', titulo: 'Pipeline interno', desc: 'Cobertura ágil y más promociones desde adentro.' },
+  { num: '03', titulo: 'Marca aspiracional', desc: 'Coherencia entre imagen, actitud y marca atrae nuevos talentos.' },
+  { num: '04', titulo: 'Potencial de venta', desc: 'Adopción rápida de VICO y modelo de relacionamiento.' }
+];
+
+const TM_ROLES = [
+  { rol: 'VCD', desc: 'Completa el formulario de mapeo para su equipo en Humand dentro del plazo establecido.', icon: '📝' },
+  { rol: 'CH local', desc: 'Aporta insights adicionales y participa en la calibración de resultados.', icon: '🤝' },
+  { rol: 'VCR', desc: 'Participa en la calibración.', icon: '✓' },
+  { rol: 'CM', desc: 'Recibe los resultados finales y valida los planes de acción.', icon: '🎯' }
+];
+
+const TM_REVIEW = [
+  { titulo: 'Potencial de crecimiento', pregunta: '¿Considerás que tiene potencial de crecimiento y desarrollo dentro de la compañía?', icon: '📈' },
+  { titulo: 'La pregunta de oro', pregunta: '¿La volverías a seleccionar para que sea parte de tu equipo?', icon: '⭐' }
+];
+
+function renderAboutTM() {
+  const container = document.getElementById('about-tm-content');
+  container.innerHTML = `
+    <!-- HERO -->
+    <div class="card" style="margin-bottom:14px; background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%); border:1px solid var(--border);">
+      <div style="display:flex; gap:20px; align-items:center; flex-wrap:wrap; justify-content:space-between;">
+        <div style="flex:1; min-width:260px;">
+          <div style="font-size:11px; color:var(--accent); font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">🎯 About Talent Mapping</div>
+          <div style="font-family:var(--font-head); font-weight:700; font-size:26px; line-height:1.2; margin-bottom:8px;">Personas que viven la marca antes de venderla.</div>
+          <div style="font-size:13px; color:var(--text-dim); margin-bottom:14px;">Proceso de mapeo de talento para alinear perfiles, detectar potencial y diseñar planes de acción personalizados.</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">
+            <span class="badge" style="background:var(--surface2); border:1px solid var(--border); color:var(--text-dim); font-size:11px;">7 preguntas</span>
+            <span class="badge" style="background:var(--surface2); border:1px solid var(--border); color:var(--text-dim); font-size:11px;">1 vez al año</span>
+            <span class="badge" style="background:var(--surface2); border:1px solid var(--border); color:var(--text-dim); font-size:11px;">Mobile first</span>
+          </div>
+          <a href="./Talent Mapping 2026.pdf" download style="display:inline-block; background:var(--accent); color:#fff; padding:10px 18px; border-radius:8px; text-decoration:none; font-size:13px; font-weight:600;">📥 Descargar presentación Talent Mapping</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABS INTERNAS -->
+    <div class="tabs" style="margin-bottom:14px; border-bottom:1px solid var(--border); padding:0; gap:0;">
+      <div class="tab ${ABOUT_TM_TAB==='que-es'?'active':''}" onclick="switchAboutTab('que-es')" style="cursor:pointer;">¿Qué es?</div>
+      <div class="tab ${ABOUT_TM_TAB==='dimensiones'?'active':''}" onclick="switchAboutTab('dimensiones')" style="cursor:pointer;">Dimensiones</div>
+      <div class="tab ${ABOUT_TM_TAB==='como-usar'?'active':''}" onclick="switchAboutTab('como-usar')" style="cursor:pointer;">Cómo se usa</div>
+      <div class="tab ${ABOUT_TM_TAB==='conductas'?'active':''}" onclick="switchAboutTab('conductas')" style="cursor:pointer;">Conductas observables</div>
+    </div>
+
+    <div id="about-tm-body">${renderAboutTMBody()}</div>
+  `;
+}
+
+function switchAboutTab(tab) {
+  ABOUT_TM_TAB = tab;
+  renderAboutTM();
+}
+
+function renderAboutTMBody() {
+  if (ABOUT_TM_TAB === 'que-es') return renderAboutQueEs();
+  if (ABOUT_TM_TAB === 'dimensiones') return renderAboutDimensiones();
+  if (ABOUT_TM_TAB === 'como-usar') return renderAboutComoUsar();
+  if (ABOUT_TM_TAB === 'conductas') return renderAboutConductas();
+  return '';
+}
+
+function renderAboutQueEs() {
+  let html = `<div class="card" style="margin-bottom:14px;">
+    <div class="card-title" style="text-transform:uppercase; letter-spacing:0.3px; color:var(--text-dim); font-size:11px; margin-bottom:8px;">Propósito</div>
+    <div style="font-family:var(--font-head); font-weight:700; font-size:17px; line-height:1.4;">Lograr una alineación de perfiles a nivel global, identificando y desarrollando competencias, conocimientos y experiencias de cada talento.</div>
+  </div>`;
+  
+  html += `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-bottom:14px;">`;
+  TM_OBJETIVOS.forEach(o => {
+    html += `<div class="card" style="margin-bottom:0;">
+      <div style="font-size:24px; margin-bottom:8px;">${o.icon}</div>
+      <div style="font-family:var(--font-head); font-weight:700; font-size:14px; margin-bottom:6px;">${o.titulo}</div>
+      <div style="font-size:12px; color:var(--text-dim); line-height:1.5;">${o.desc}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  
+  html += `<div class="card" style="margin-bottom:14px;">
+    <div class="card-title" style="margin-bottom:12px;">El match correcto entre talento y marca potencia los resultados</div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">`;
+  TM_IMPACTO.forEach(i => {
+    html += `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px;">
+      <div style="font-family:var(--font-head); font-weight:700; font-size:20px; color:var(--accent); margin-bottom:4px;">${i.num}</div>
+      <div style="font-family:var(--font-head); font-weight:700; font-size:13px; margin-bottom:4px;">${i.titulo}</div>
+      <div style="font-size:11px; color:var(--text-dim); line-height:1.4;">${i.desc}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  
+  return html;
+}
+
+function renderAboutDimensiones() {
+  let html = `<div style="font-size:13px; color:var(--text-dim); margin-bottom:14px;">6 dimensiones de evaluación + 2 preguntas de Talent Review.</div>`;
+  html += `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-bottom:14px;">`;
+  TM_DIMENSIONES.forEach(d => {
+    html += `<div class="card" style="margin-bottom:0;">
+      <div style="font-size:24px; margin-bottom:8px;">${d.icon}</div>
+      <div style="font-family:var(--font-head); font-weight:700; font-size:14px; margin-bottom:6px;">${d.key}</div>
+      <div style="font-size:12px; color:var(--text-dim); line-height:1.5; font-style:italic;">${d.pregunta}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  
+  html += `<div class="card" style="margin-bottom:14px; background:var(--surface2);">
+    <div class="card-title" style="margin-bottom:10px;">Talent Review</div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">`;
+  TM_REVIEW.forEach(r => {
+    html += `<div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px;">
+      <div style="font-size:22px; margin-bottom:6px;">${r.icon}</div>
+      <div style="font-family:var(--font-head); font-weight:700; font-size:14px; margin-bottom:6px;">${r.titulo}</div>
+      <div style="font-size:12px; color:var(--text-dim); line-height:1.5; font-style:italic;">${r.pregunta}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  
+  return html;
+}
+
+function renderAboutComoUsar() {
+  let html = `<div class="card" style="margin-bottom:14px;">
+    <div class="card-title" style="margin-bottom:12px;">Roles y responsabilidades</div>
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">`;
+  TM_ROLES.forEach(r => {
+    html += `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px;">
+      <div style="font-size:22px; margin-bottom:6px;">${r.icon}</div>
+      <div style="font-family:var(--font-head); font-weight:700; font-size:14px; margin-bottom:6px;">${r.rol}</div>
+      <div style="font-size:11px; color:var(--text-dim); line-height:1.5;">${r.desc}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  
+  // Flujo de observación a acción
+  const dim = TM_DIMENSIONES.find(d => d.key === ABOUT_TM_FLOW_DIM) || TM_DIMENSIONES[0];
+  html += `<div class="card" style="margin-bottom:14px;">
+    <div class="card-title" style="margin-bottom:6px;">De observación a acción</div>
+    <div style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">Cómo una conducta observada en tienda se transforma en una decisión accionable.</div>
+    
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;">`;
+  TM_DIMENSIONES.forEach(d => {
+    html += `<span class="filter-tag ${ABOUT_TM_FLOW_DIM === d.key ? 'active' : ''}" onclick="switchFlowDim('${d.key}')">${d.icon} ${d.key}</span>`;
+  });
+  html += `</div>`;
+  
+  const steps = [
+    { icon: '👁', label: 'Conducta observable', value: dim.flow.conducta, color: 'var(--accent)' },
+    { icon: '📍', label: 'Evidencia en tienda', value: dim.flow.evidencia, color: 'var(--neutro)' },
+    { icon: '📊', label: 'Dato capturable', value: dim.flow.dato, color: 'var(--accent)' },
+    { icon: '💡', label: 'Insight', value: dim.flow.insight, color: 'var(--promotor)' },
+    { icon: '🎯', label: 'Acción sugerida', value: dim.flow.accion, color: 'var(--accent)' }
+  ];
+  
+  html += `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">`;
+  steps.forEach((s, i) => {
+    html += `<div style="background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; position:relative;">
+      <div style="font-size:20px; margin-bottom:6px;">${s.icon}</div>
+      <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:4px; font-weight:700;">${i+1}. ${s.label}</div>
+      <div style="font-size:12px; line-height:1.4; color:${s.color}; font-weight:600;">${s.value}</div>
+    </div>`;
+  });
+  html += `</div></div>`;
+  
+  return html;
+}
+
+function switchFlowDim(dim) {
+  ABOUT_TM_FLOW_DIM = dim;
+  document.getElementById('about-tm-body').innerHTML = renderAboutTMBody();
+}
+
+function renderAboutConductas() {
+  let html = `<div style="font-size:13px; color:var(--text-dim); margin-bottom:14px;">Guía de interpretación. Cada dimensión incluye sus comportamientos clave, cómo se ven en tienda y qué pista nos dan.</div>`;
+  TM_DIMENSIONES.forEach(d => {
+    html += `<div class="card" style="margin-bottom:10px; padding:0;">
+      <details>
+        <summary style="padding:14px; cursor:pointer; display:flex; align-items:center; gap:10px; list-style:none;">
+          <span style="font-size:22px;">${d.icon}</span>
+          <span style="font-family:var(--font-head); font-weight:700; font-size:14px; flex:1;">${d.key}</span>
+          <span style="font-size:11px; color:var(--text-muted);">▾</span>
+        </summary>
+        <div style="padding:0 14px 14px 14px; border-top:1px solid var(--border);">
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px; margin:10px 0 6px 0; font-weight:700;">Comportamientos</div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
+            ${d.chips.map(c => `<span class="badge" style="background:var(--surface2); border:1px solid var(--border); color:var(--text); font-size:11px;">${c}</span>`).join('')}
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px; margin:10px 0 6px 0; font-weight:700;">Cómo se ve en tienda</div>
+          <div style="font-size:13px; color:var(--text); line-height:1.5; margin-bottom:10px;">${d.enTienda}</div>
+          <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.3px; margin:10px 0 6px 0; font-weight:700;">Pista que da</div>
+          <div style="font-size:13px; color:var(--accent); line-height:1.5; font-style:italic;">${d.pista}</div>
+        </div>
+      </details>
+    </div>`;
+  });
+  return html;
+}
 
 function renderTalentValidation() {
   // Generar muestra inicial si está vacía
